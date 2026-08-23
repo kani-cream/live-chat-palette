@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Live Chat Palette",
+    "description": "Extension name shown in Chrome and the Web Store."
+  },
+  "appDescription": {
+    "message": "Message presets and favorite custom emojis for YouTube Live Chat. Insert with one click; posting stays explicit.",
+    "description": "Extension description shown in Chrome and the Web Store."
+  }
+}

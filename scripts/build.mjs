@@ -69,6 +69,7 @@ const copyStatic = async () => {
   }
   await writeFile(path.join(dist, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   await cp(path.join(root, 'public/icons'), path.join(dist, 'icons'), { recursive: true });
+  await cp(path.join(root, '_locales'), path.join(dist, '_locales'), { recursive: true });
   await cp(path.join(root, 'LICENSE'), path.join(dist, 'LICENSE'));
 };
 

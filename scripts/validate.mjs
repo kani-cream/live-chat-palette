@@ -35,7 +35,6 @@ const FORBIDDEN_CODE = [
   { name: 'new Function', pattern: /new\s+Function\s*\(/ },
   { name: 'remote script', pattern: /https?:\/\/[^"'`\s]+\.js\b/ },
   { name: 'importScripts', pattern: /\bimportScripts\s*\(/ },
-  { name: 'document.execCommand', pattern: /\.execCommand\s*\(/ },
   { name: 'cookie access', pattern: /document\.cookie/ },
   { name: 'YouTube internal API', pattern: /youtubei\/v1/ },
 ];
@@ -57,8 +56,19 @@ const validateManifest = (manifest, label) => {
   if (!/^\d+(\.\d+){1,3}$/.test(manifest.version ?? '')) {
     fail(`${label}: version must be 1-4 dot-separated integers (got ${manifest.version})`);
   }
-  if (typeof manifest.description !== 'string' || manifest.description.length > 132) {
+  // Localized (__MSG_*__) name/description are resolved from _locales (validated separately).
+  const isMsgRef = (value) => typeof value === 'string' && /^__MSG_[A-Za-z0-9_@]+__$/.test(value);
+  if (
+    !isMsgRef(manifest.description) &&
+    (typeof manifest.description !== 'string' || manifest.description.length > 132)
+  ) {
     fail(`${label}: description missing or longer than 132 chars`);
+  }
+  if (
+    (isMsgRef(manifest.name) || isMsgRef(manifest.description)) &&
+    manifest.default_locale !== 'en'
+  ) {
+    fail(`${label}: localized name/description require default_locale "en"`);
   }
   for (const p of manifest.permissions ?? []) {
     if (!ALLOWED_PERMISSIONS.has(p)) fail(`${label}: permission "${p}" is not allowed`);
@@ -116,9 +126,42 @@ const listFiles = async (dir, base = '') => {
   return out;
 };
 
+const MSG_REF = /^__MSG_([A-Za-z0-9_@]+)__$/;
+
+/** Validate that every __MSG_*__ referenced by the manifest resolves in each locale. */
+const validateLocales = async (baseDir, manifest, label) => {
+  if (!manifest.default_locale) return;
+  const referenced = [manifest.name, manifest.description]
+    .map((v) => MSG_REF.exec(v ?? '')?.[1])
+    .filter(Boolean);
+  if (referenced.length === 0) return;
+  const localesDir = path.join(baseDir, '_locales');
+  if (!(await exists(localesDir))) {
+    fail(`${label}: _locales directory missing`);
+    return;
+  }
+  if (!(await exists(path.join(localesDir, manifest.default_locale, 'messages.json')))) {
+    fail(`${label}: _locales/${manifest.default_locale}/messages.json missing`);
+  }
+  for (const locale of await readdir(localesDir)) {
+    const messagesFile = path.join(localesDir, locale, 'messages.json');
+    if (!(await exists(messagesFile))) continue;
+    const messages = await readJson(messagesFile);
+    for (const key of referenced) {
+      const message = messages[key]?.message;
+      if (typeof message !== 'string' || message.length === 0) {
+        fail(`${label}: _locales/${locale} missing message "${key}"`);
+      } else if (key.toLowerCase().includes('description') && message.length > 132) {
+        fail(`${label}: _locales/${locale} "${key}" longer than 132 chars`);
+      }
+    }
+  }
+};
+
 const validateSourceManifest = async () => {
   const manifest = await readJson(path.join(root, 'manifest.json'));
   validateManifest(manifest, 'manifest.json');
+  await validateLocales(root, manifest, 'manifest.json');
   const pkg = await readJson(path.join(root, 'package.json'));
   if (pkg.license !== 'Apache-2.0') fail('package.json: license must be Apache-2.0');
   if (pkg.version !== manifest.version) fail('package.json version differs from manifest.json');
@@ -138,6 +181,7 @@ const validateDist = async () => {
   }
   const manifest = await readJson(path.join(dist, 'manifest.json'));
   validateManifest(manifest, 'dist/manifest.json');
+  await validateLocales(dist, manifest, 'dist/');
   const files = await listFiles(dist);
   for (const required of [...manifestFiles(manifest), 'LICENSE']) {
     if (!files.includes(required)) fail(`dist/: required file "${required}" missing`);

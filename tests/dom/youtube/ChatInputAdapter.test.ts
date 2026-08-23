@@ -134,6 +134,46 @@ describe('DomChatInputAdapter.insertText', () => {
     if (!result.ok) expect(result.error.code).toBe('INSERT_UNCONFIRMED');
     expect(harness.readInput()).toBe('something else');
   });
+  it('prefers the native execCommand insertion path when the browser supports it', () => {
+    const harness = mountLiveChat({ initialDraft: 'ab' });
+    harness.select(1);
+    let nativeCalls = 0;
+    let manualInputEvents = 0;
+    adapter()
+      .findInput()
+      ?.addEventListener('input', () => {
+        manualInputEvents += 1;
+      });
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    document.execCommand = (command: string, _showUi?: boolean, value?: string): boolean => {
+      if (command !== 'insertText') return false;
+      nativeCalls += 1;
+      const selection = document.getSelection();
+      const range = selection?.getRangeAt(0);
+      if (!range) return false;
+      range.deleteContents();
+      range.insertNode(document.createTextNode(value ?? ''));
+      range.collapse(false);
+      return true;
+    };
+    const result = adapter().insertText('X');
+    expect(result.ok).toBe(true);
+    expect(nativeCalls).toBe(1);
+    // The manual fallback (which dispatches its own input event) must not run.
+    expect(manualInputEvents).toBe(0);
+    expect(harness.readInput()).toBe('aXb');
+  });
+
+  it('falls back to manual insertion when execCommand reports success but does nothing', () => {
+    const harness = mountLiveChat({ initialDraft: 'ab' });
+    harness.select(1);
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    document.execCommand = () => true; // lies: returns true but leaves the editor unchanged
+    const result = adapter().insertText('X');
+    expect(result.ok).toBe(true);
+    expect(harness.readInput()).toBe('aXb');
+  });
+
   it('dispatches an input event so YouTube can update its own state', () => {
     mountLiveChat();
     const input = adapter().findInput();

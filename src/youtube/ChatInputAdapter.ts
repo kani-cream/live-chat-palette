@@ -60,6 +60,23 @@ export class DomChatInputAdapter implements ChatInputAdapter {
     afterRange.setStart(range.endContainer, range.endOffset);
     afterRange.setEnd(input, input.childNodes.length);
     const expected = rangeText(beforeRange) + text + rangeText(afterRange);
+    const before = serializeEditorContent(input);
+
+    // Preferred path: let the browser perform a *native* text insertion. YouTube's chat editor is
+    // framework-managed; a hand-built DOM mutation is reverted on the next re-render, so inserted
+    // text "disappears". execCommand('insertText') routes through the same path real typing uses,
+    // updating YouTube's own editor model, so the text sticks. It is deprecated but has no modern
+    // equivalent for framework-owned contenteditables. The result is still verified, and we fall
+    // back to a manual insertion when the environment ignores execCommand (e.g. jsdom in tests).
+    if (this.tryNativeInsert(doc, text)) {
+      const after = serializeEditorContent(input);
+      if (after === expected) return okVoid();
+      // The native insert changed the editor but not as expected — do not compound it.
+      if (after !== before) {
+        return err('INSERT_UNCONFIRMED', 'Inserted text could not be confirmed in the editor.');
+      }
+      // Native insert was a no-op; fall through to the manual path below.
+    }
 
     range.deleteContents();
     const textNode = doc.createTextNode(text);
@@ -77,6 +94,26 @@ export class DomChatInputAdapter implements ChatInputAdapter {
       return err('INSERT_UNCONFIRMED', 'Inserted text could not be confirmed in the editor.');
     }
     return okVoid();
+  }
+
+  /**
+   * Native text insertion via execCommand; returns false when the environment ignores it.
+   * execCommand is deprecated but is intentionally used here: it is the only API that inserts into
+   * a framework-managed contenteditable through the real editing pipeline, so YouTube keeps the
+   * text. There is no non-deprecated equivalent, so the deprecation lint is disabled for this line.
+   */
+  private tryNativeInsert(doc: Document, text: string): boolean {
+    const runner = doc as Document & {
+      execCommand?: (command: string, showUi?: boolean, value?: string) => boolean;
+    };
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      if (typeof runner.execCommand !== 'function') return false;
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      return runner.execCommand('insertText', false, text);
+    } catch {
+      return false;
+    }
   }
 
   private currentRangeWithin(input: HTMLElement, selection: Selection): Range | null {

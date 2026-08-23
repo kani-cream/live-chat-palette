@@ -8,6 +8,7 @@ import type { StorageSchema } from '../storage/schema';
 import { chromeStorageArea } from '../storage/StorageArea';
 import { StorageRepository } from '../storage/StorageRepository';
 import { h } from '../ui/dom';
+import { STRINGS, detectAndApplyLang } from '../ui/strings';
 
 export interface OptionsDeps {
   root: HTMLElement;
@@ -47,10 +48,10 @@ export class OptionsPage {
     root.setAttribute('aria-busy', 'false');
     root.replaceChildren(
       ...[
-        h('h1', { text: 'Live Chat Palette' }),
+        h('h1', { text: STRINGS.appName }),
         h('p', {
           className: 'subtitle',
-          text: 'Message presets and favorite custom emojis for YouTube Live Chat. All data is stored locally in your browser.',
+          text: STRINGS.optionsTagline,
         }),
         this.error
           ? h('p', { className: 'error', text: this.error, attrs: { role: 'alert' } })
@@ -88,29 +89,24 @@ export class OptionsPage {
     return h(
       'section',
       {},
-      h('h2', { text: 'General' }),
-      h(
-        'label',
-        { className: 'field' },
-        instant,
-        'Send message presets immediately when clicked (Cmd/Ctrl + Click always sends)',
-      ),
+      h('h2', { text: STRINGS.optionsGeneral }),
+      h('label', { className: 'field' }, instant, STRINGS.optionsInstantSend),
       h('p', {
         className: 'muted',
-        text: 'Emojis are always inserted only; they are never sent immediately.',
+        text: STRINGS.optionsEmojiNeverSend,
       }),
       h(
         'fieldset',
         {},
-        h('legend', { text: 'Default palette tab' }),
-        tabRadio('emoji', 'Emojis'),
-        tabRadio('preset', 'Presets'),
+        h('legend', { text: STRINGS.optionsDefaultTab }),
+        tabRadio('emoji', STRINGS.tabEmoji),
+        tabRadio('preset', STRINGS.tabPreset),
       ),
     );
   }
 
   private renderPresetList(presets: readonly MessagePreset[]): HTMLElement {
-    if (presets.length === 0) return h('p', { className: 'empty', text: 'No presets yet.' });
+    if (presets.length === 0) return h('p', { className: 'empty', text: STRINGS.optionsNoPresets });
     return h(
       'ul',
       { className: 'list' },
@@ -121,7 +117,7 @@ export class OptionsPage {
   private renderPresetItem(preset: MessagePreset, index: number, total: number): HTMLElement {
     if (this.editingId === preset.id) {
       const input = h('input', {
-        attrs: { type: 'text', 'aria-label': 'Preset text', maxlength: '200' },
+        attrs: { type: 'text', 'aria-label': STRINGS.presetTextLabel, maxlength: '200' },
         props: { value: preset.text },
       });
       const save = (): void => {
@@ -136,13 +132,13 @@ export class OptionsPage {
         { dataset: { presetId: preset.id } },
         input,
         h('button', {
-          text: 'Save',
+          text: STRINGS.save,
           className: 'primary',
           attrs: { type: 'button' },
           on: { click: save },
         }),
         h('button', {
-          text: 'Cancel',
+          text: STRINGS.cancel,
           attrs: { type: 'button' },
           on: {
             click: () => {
@@ -161,7 +157,7 @@ export class OptionsPage {
       h('span', { className: 'text', text: preset.text }),
       h('button', {
         text: '↑',
-        attrs: { type: 'button', 'aria-label': `Move up: ${label}` },
+        attrs: { type: 'button', 'aria-label': STRINGS.moveUp(label) },
         props: { disabled: index === 0 },
         on: {
           click: () => {
@@ -171,7 +167,7 @@ export class OptionsPage {
       }),
       h('button', {
         text: '↓',
-        attrs: { type: 'button', 'aria-label': `Move down: ${label}` },
+        attrs: { type: 'button', 'aria-label': STRINGS.moveDown(label) },
         props: { disabled: index === total - 1 },
         on: {
           click: () => {
@@ -180,8 +176,8 @@ export class OptionsPage {
         },
       }),
       h('button', {
-        text: 'Edit',
-        attrs: { type: 'button', 'aria-label': `Edit: ${label}` },
+        text: STRINGS.optionsEdit,
+        attrs: { type: 'button', 'aria-label': STRINGS.editItem(label) },
         on: {
           click: () => {
             this.editingId = preset.id;
@@ -190,9 +186,9 @@ export class OptionsPage {
         },
       }),
       h('button', {
-        text: 'Delete',
+        text: STRINGS.optionsDelete,
         className: 'danger',
-        attrs: { type: 'button', 'aria-label': `Delete: ${label}` },
+        attrs: { type: 'button', 'aria-label': STRINGS.deleteItem(label) },
         on: {
           click: () => {
             void this.deps.presets.remove(preset.id);
@@ -207,8 +203,8 @@ export class OptionsPage {
     const input = h('input', {
       attrs: {
         type: 'text',
-        placeholder: 'New global preset',
-        'aria-label': 'New global preset',
+        placeholder: STRINGS.optionsNewGlobalPreset,
+        'aria-label': STRINGS.optionsNewGlobalPreset,
         maxlength: '200',
       },
     });
@@ -228,12 +224,12 @@ export class OptionsPage {
         },
       },
       input,
-      h('button', { text: 'Add', className: 'primary', attrs: { type: 'submit' } }),
+      h('button', { text: STRINGS.optionsAdd, className: 'primary', attrs: { type: 'submit' } }),
     );
     return h(
       'section',
       { dataset: { section: 'global-presets' } },
-      h('h2', { text: 'Global presets' }),
+      h('h2', { text: STRINGS.optionsGlobalPresets }),
       this.renderPresetList(globals),
       form,
     );
@@ -250,12 +246,14 @@ export class OptionsPage {
     return h(
       'section',
       { dataset: { section: 'channel-presets' } },
-      h('h2', { text: 'Channel presets' }),
+      h('h2', { text: STRINGS.optionsChannelPresets }),
       h('p', {
         className: 'muted',
-        text: 'Channel presets are created from the palette while watching a stream.',
+        text: STRINGS.optionsChannelPresetsHint,
       }),
-      groups.size === 0 ? h('p', { className: 'empty', text: 'No channel presets yet.' }) : null,
+      groups.size === 0
+        ? h('p', { className: 'empty', text: STRINGS.optionsNoChannelPresets })
+        : null,
       ...[...groups.entries()].map(([channelId, presets]) =>
         h(
           'div',
@@ -272,8 +270,8 @@ export class OptionsPage {
     return h(
       'section',
       { dataset: { section: 'favorite-emojis' } },
-      h('h2', { text: 'Favorite emojis' }),
-      groups.size === 0 ? h('p', { className: 'empty', text: 'No favorite emojis yet.' }) : null,
+      h('h2', { text: STRINGS.optionsFavoriteEmojis }),
+      groups.size === 0 ? h('p', { className: 'empty', text: STRINGS.optionsNoFavorites }) : null,
       ...[...groups.entries()].map(([channelId, favorites]) =>
         h(
           'div',
@@ -300,7 +298,7 @@ export class OptionsPage {
       h('span', { className: 'muted', text: favorite.familyName }),
       h('button', {
         text: '↑',
-        attrs: { type: 'button', 'aria-label': `Move up: ${favorite.displayName}` },
+        attrs: { type: 'button', 'aria-label': STRINGS.moveUp(favorite.displayName) },
         props: { disabled: index === 0 },
         on: {
           click: () => {
@@ -310,7 +308,7 @@ export class OptionsPage {
       }),
       h('button', {
         text: '↓',
-        attrs: { type: 'button', 'aria-label': `Move down: ${favorite.displayName}` },
+        attrs: { type: 'button', 'aria-label': STRINGS.moveDown(favorite.displayName) },
         props: { disabled: index === total - 1 },
         on: {
           click: () => {
@@ -319,9 +317,9 @@ export class OptionsPage {
         },
       }),
       h('button', {
-        text: 'Remove',
+        text: STRINGS.optionsRemove,
         className: 'danger',
-        attrs: { type: 'button', 'aria-label': `Remove favorite: ${favorite.displayName}` },
+        attrs: { type: 'button', 'aria-label': STRINGS.removeFavoriteItem(favorite.displayName) },
         on: {
           click: () => {
             void this.deps.emojis.removeFavorite(favorite);
@@ -333,6 +331,8 @@ export class OptionsPage {
 }
 
 if (typeof document !== 'undefined' && !import.meta.env.VITEST) {
+  detectAndApplyLang();
+  document.title = STRINGS.settingsPageTitle;
   const root = document.getElementById('app');
   if (root) {
     const repo = new StorageRepository(chromeStorageArea(chrome.storage.local, 'local'));
@@ -348,7 +348,7 @@ if (typeof document !== 'undefined' && !import.meta.env.VITEST) {
       root.replaceChildren(
         h('p', {
           className: 'error',
-          text: 'Settings could not be loaded. Please reload this page.',
+          text: STRINGS.optionsLoadError,
         }),
       );
     });

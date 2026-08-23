@@ -13,12 +13,14 @@ import { DomEmojiPickerAdapter } from '../../youtube/EmojiPickerAdapter';
 import { detectFrameRole, videoIdFromChatUrl } from '../../youtube/frame';
 import { DomPaletteAnchorAdapter } from '../../youtube/PaletteAnchorAdapter';
 import { DomSendButtonAdapter } from '../../youtube/SendButtonAdapter';
+import { detectAndApplyLang } from '../../ui/strings';
 import { MountController } from './mountController';
 import { PaletteController } from './PaletteController';
 
 export const createChatContentScript = (doc: Document, win: Window): MountController | null => {
   const role = detectFrameRole({ href: win.location.href, isTopFrame: win.top === win });
   if (role !== 'chat') return null;
+  detectAndApplyLang();
 
   const repo = new StorageRepository(chromeStorageArea(chrome.storage.local, 'local'));
   const chatInput = new DomChatInputAdapter(doc);

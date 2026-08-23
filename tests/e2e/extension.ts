@@ -142,7 +142,8 @@ export const test = base.extend<ExtensionFixtures>({
     const context = await chromium.launchPersistentContext(userDataDir, {
       channel: 'chromium',
       headless: true,
-      args: [`--disable-extensions-except=${DIST}`, `--load-extension=${DIST}`],
+      // Pin the UI language so locale-dependent assertions are deterministic in CI.
+      args: [`--disable-extensions-except=${DIST}`, `--load-extension=${DIST}`, '--lang=en-US'],
     });
     await use(context);
     await context.close();

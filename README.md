@@ -21,6 +21,7 @@ own native chat input and send button rather than any private API.
 - **Fail closed** — if the chat input, send button, or an emoji can't be confidently identified, the
   extension stops instead of guessing, and your draft is preserved.
 - **Empty & error states**, light/dark theme, Shadow-DOM isolation, keyboard-accessible controls.
+- **English / Japanese UI** — follows your browser language automatically (日本語対応).
 - **SPA-aware** — follows YouTube navigation between streams without breaking or double-mounting.
 
 ## Interaction summary

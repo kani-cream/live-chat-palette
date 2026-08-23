@@ -7,39 +7,40 @@ import type { PaletteHandlers, PaletteState } from './state';
 import { STRINGS } from './strings';
 import styles from './styles.css?inline';
 
-const TABS: readonly { id: PaletteTab; label: string }[] = [
-  { id: 'emoji', label: STRINGS.tabEmoji },
-  { id: 'preset', label: STRINGS.tabPreset },
-];
+const TAB_IDS: readonly PaletteTab[] = ['emoji', 'preset'];
+
+const tabLabel = (id: PaletteTab): string =>
+  id === 'emoji' ? STRINGS.tabEmoji : STRINGS.tabPreset;
 
 const renderTabs = (state: PaletteState, handlers: PaletteHandlers): HTMLElement => {
   const onKeydown = (event: KeyboardEvent): void => {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     event.preventDefault();
-    const index = TABS.findIndex((t) => t.id === state.tab);
-    const nextIndex = (index + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length;
-    const next = TABS[nextIndex];
-    if (next) handlers.onSelectTab(next.id);
+    const index = TAB_IDS.findIndex((id) => id === state.tab);
+    const nextIndex =
+      (index + (event.key === 'ArrowRight' ? 1 : -1) + TAB_IDS.length) % TAB_IDS.length;
+    const next = TAB_IDS[nextIndex];
+    if (next) handlers.onSelectTab(next);
   };
   return h(
     'div',
     { className: 'lcp-tabs', attrs: { role: 'tablist', 'aria-label': STRINGS.appName } },
-    ...TABS.map((tab) =>
+    ...TAB_IDS.map((id) =>
       h('button', {
         className: 'lcp-tab',
-        text: tab.label,
+        text: tabLabel(id),
         attrs: {
           type: 'button',
           role: 'tab',
-          id: `lcp-tab-${tab.id}`,
-          'aria-selected': String(state.tab === tab.id),
-          'aria-controls': `lcp-panel-${tab.id}`,
-          tabindex: state.tab === tab.id ? '0' : '-1',
+          id: `lcp-tab-${id}`,
+          'aria-selected': String(state.tab === id),
+          'aria-controls': `lcp-panel-${id}`,
+          tabindex: state.tab === id ? '0' : '-1',
         },
-        dataset: { tab: tab.id, focusKey: `tab:${tab.id}`, testid: `tab-${tab.id}` },
+        dataset: { tab: id, focusKey: `tab:${id}`, testid: `tab-${id}` },
         on: {
           click: () => {
-            handlers.onSelectTab(tab.id);
+            handlers.onSelectTab(id);
           },
           keydown: onKeydown,
         },

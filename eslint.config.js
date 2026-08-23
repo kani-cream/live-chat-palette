@@ -31,14 +31,6 @@ export default tseslint.config(
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
-      'no-restricted-properties': [
-        'error',
-        {
-          object: 'document',
-          property: 'execCommand',
-          message: 'Deprecated; use Range + InputEvent.',
-        },
-      ],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/no-unnecessary-condition': 'off',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
