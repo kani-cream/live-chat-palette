@@ -1,13 +1,14 @@
 import { EmojiService } from '../application/EmojiService';
 import { PresetService } from '../application/PresetService';
 import { SettingsService } from '../application/SettingsService';
-import type { EmojiReference } from '../domain/emoji';
+import type { AvailableEmoji, EmojiReference } from '../domain/emoji';
 import { sortPresets, type MessagePreset } from '../domain/preset';
 import { logger } from '../shared/logger';
 import type { StorageSchema } from '../storage/schema';
 import { chromeStorageArea } from '../storage/StorageArea';
 import { StorageRepository } from '../storage/StorageRepository';
 import { h } from '../ui/dom';
+import { renderEmojiText } from '../ui/emojiText';
 import { STRINGS, detectAndApplyLang } from '../ui/strings';
 
 export interface OptionsDeps {
@@ -114,6 +115,20 @@ export class OptionsPage {
     );
   }
 
+  /** Emojis usable to render a preset's shortcodes as images: the cached catalog plus favorites. */
+  private emojisForPreset(preset: MessagePreset): AvailableEmoji[] {
+    const schema = this.schema;
+    if (!schema) return [];
+    const scoped = preset.scope === 'channel' && preset.channelId !== undefined;
+    const catalog = scoped
+      ? (schema.emojiCatalog[preset.channelId ?? ''] ?? [])
+      : Object.values(schema.emojiCatalog).flat();
+    const favorites = scoped
+      ? schema.favoriteEmojis.filter((f) => f.channelId === preset.channelId)
+      : schema.favoriteEmojis;
+    return [...catalog, ...favorites];
+  }
+
   private renderPresetItem(preset: MessagePreset, index: number, total: number): HTMLElement {
     if (this.editingId === preset.id) {
       const input = h('input', {
@@ -154,7 +169,11 @@ export class OptionsPage {
     return h(
       'li',
       { dataset: { presetId: preset.id } },
-      h('span', { className: 'text', text: preset.text }),
+      h(
+        'span',
+        { className: 'text' },
+        ...renderEmojiText(preset.text, this.emojisForPreset(preset)),
+      ),
       h('button', {
         text: '↑',
         attrs: { type: 'button', 'aria-label': STRINGS.moveUp(label) },

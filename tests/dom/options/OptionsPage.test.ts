@@ -81,6 +81,33 @@ describe('OptionsPage', () => {
     await t.settle();
     expect(texts()).toEqual(['uno']);
   });
+  it('renders preset shortcodes as images using the cached catalog and favorites', async () => {
+    const area = new FakeStorageArea();
+    const repo = new StorageRepository(area);
+    await new PresetService(repo).add({ text: 'おつ :_wave:', scope: 'channel', channelId: CH_A });
+    // Seed the per-channel emoji catalog (as the auto-discovery would).
+    await repo.update((s) => ({
+      ...s,
+      channels: { [CH_A]: { channelId: CH_A, channelName: 'Channel A', lastSeenAt: 1 } },
+      emojiCatalog: {
+        [CH_A]: [
+          {
+            id: 'c1',
+            channelId: CH_A,
+            familyName: 'fam',
+            emojiName: ':_wave:',
+            displayName: 'wave',
+            imageUrl: 'https://img.example/wave.png',
+            lastSeenAt: 1,
+          },
+        ],
+      },
+    }));
+    const t = await setup(area);
+    const chip = t.root.querySelector('[data-section="channel-presets"] .text');
+    expect(chip?.querySelector('img.lcp-inline-emoji')).not.toBeNull();
+    expect(chip?.textContent).toContain('おつ');
+  });
   it('shows validation errors for empty presets', async () => {
     const t = await setup();
     t.root

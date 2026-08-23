@@ -192,3 +192,11 @@ fieldset {
   color: var(--fg-muted);
   font-size: 12px;
 }
+
+.lcp-inline-emoji {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin: 0 1px;
+}
