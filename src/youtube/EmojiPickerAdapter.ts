@@ -164,11 +164,21 @@ const categoryTitle = (category: Element): string => {
   return '';
 };
 
+/**
+ * A member/custom-channel emoji (as opposed to YouTube's global animated emojis or unicode ones).
+ * Verified against a real live picker:
+ *  - the member emoji listbox is marked `CATEGORY_TYPE_CUSTOM` (global is `CATEGORY_TYPE_GLOBAL`);
+ *  - each picker <img> has `aria-label=":_shortcode:"` and `id="<channelId>/<hash>"` (no data-emoji-id).
+ * The category-type marker is authoritative; the shortcode/id are a fallback for DOM without it.
+ */
 export const isCustomEmojiImage = (image: HTMLImageElement): boolean => {
-  const emojiId = image.getAttribute('data-emoji-id') ?? '';
-  if (CUSTOM_EMOJI_ID.test(emojiId)) return true;
+  if (image.closest(`.${CHAT_SELECTORS.customCategoryClass}`)) return true;
+  if (image.closest(CHAT_SELECTORS.nonCustomCategoryClass)) return false;
+  const ariaLabel = (image.getAttribute('aria-label') ?? '').trim();
+  if (CUSTOM_SHORTCODE.test(ariaLabel)) return true;
+  const id = image.getAttribute('id') ?? image.getAttribute('data-emoji-id') ?? '';
   const alt = (image.getAttribute('alt') ?? '').trim();
-  return CUSTOM_SHORTCODE.test(alt);
+  return CUSTOM_EMOJI_ID.test(id) || CUSTOM_SHORTCODE.test(alt);
 };
 
 const toAvailableEmoji = (
@@ -176,15 +186,17 @@ const toAvailableEmoji = (
   familyName: string,
   image: HTMLImageElement,
 ): AvailableEmoji | null => {
-  const emojiName = (image.getAttribute('alt') ?? '').trim();
+  // The typeable shortcode is the aria-label (":_name:"); alt is the human display name.
+  const ariaLabel = (image.getAttribute('aria-label') ?? '').trim();
+  const alt = (image.getAttribute('alt') ?? '').trim();
+  const emojiName = CUSTOM_SHORTCODE.test(ariaLabel) ? ariaLabel : alt;
   if (emojiName.length === 0) return null;
-  const tooltip = (image.getAttribute('shared-tooltip-text') ?? '').trim();
   const imageUrl = image.getAttribute('src') ?? undefined;
   return {
     channelId,
     familyName,
     emojiName,
-    displayName: tooltip || emojiName,
+    displayName: alt || emojiName,
     ...(imageUrl !== undefined ? { imageUrl } : {}),
   };
 };

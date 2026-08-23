@@ -28,6 +28,7 @@ export const VIDEO_B = 'bbbbbbbbbbb';
 export const CATEGORIES_A: HarnessEmojiCategory[] = [
   {
     name: 'Channel A members',
+    custom: true,
     emojis: [
       { name: ':_wave:', id: `${CH_A}/wave`, src: '/fixtures/emoji.png' },
       { name: ':_heart:', id: `${CH_A}/heart`, src: '/fixtures/emoji.png' },
@@ -42,6 +43,7 @@ export const CATEGORIES_A: HarnessEmojiCategory[] = [
 export const CATEGORIES_B: HarnessEmojiCategory[] = [
   {
     name: 'Channel B members',
+    custom: true,
     emojis: [{ name: ':_b_party:', id: `${CH_B}/party`, src: '/fixtures/emoji.png' }],
   },
 ];

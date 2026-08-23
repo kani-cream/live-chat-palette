@@ -63,6 +63,65 @@ describe('DomEmojiPickerAdapter.scanAvailableEmojis', () => {
       },
     ]);
   });
+  it('uses the aria-label shortcode as the name and alt as the display name (real markup)', () => {
+    // Mirrors a real member emoji: aria-label=":_スバルわたあめうさぎ:", alt="スバルわたあめうさぎ".
+    mountLiveChat({
+      pickerPreRendered: true,
+      harness: {
+        categories: [
+          {
+            name: 'Subaru Ch. 大空スバル',
+            custom: true,
+            emojis: [
+              {
+                name: 'スバルわたあめうさぎ',
+                shortcode: ':_スバルわたあめうさぎ:',
+                id: `${CH_A}/dedVXKPOM5m7`,
+                src: 'https://yt3.ggpht.com/x',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const result = adapter().scanAvailableEmojis(CH_A);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toEqual([
+      {
+        channelId: CH_A,
+        familyName: 'Subaru Ch. 大空スバル',
+        emojiName: ':_スバルわたあめうさぎ:',
+        displayName: 'スバルわたあめうさぎ',
+        imageUrl: 'https://yt3.ggpht.com/x',
+      },
+    ]);
+  });
+  it('excludes non-custom (global/unicode) categories', () => {
+    mountLiveChat({
+      pickerPreRendered: true,
+      harness: {
+        categories: [
+          {
+            name: 'YouTube',
+            emojis: [
+              { name: 'hand-pink-waving', id: 'UCkszU2WH9gy1mb0dV-11UJg/x', src: 'https://x/1' },
+            ],
+          },
+          {
+            name: 'Members',
+            custom: true,
+            emojis: [{ name: ':_ok:', id: `${CH_A}/ok`, src: 'https://x/2' }],
+          },
+        ],
+      },
+    });
+    const result = adapter().scanAvailableEmojis(CH_A);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.map((e) => e.familyName)).toEqual(['Members']);
+    }
+  });
   it('works on a hidden (closed) picker without opening it', () => {
     mountLiveChat({
       pickerPreRendered: true,

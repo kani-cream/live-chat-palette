@@ -24,8 +24,16 @@ export const CHAT_SELECTORS = {
   ],
   emojiPicker: 'yt-emoji-picker-renderer',
   emojiCategory: 'yt-emoji-picker-category-renderer',
-  emojiCategoryTitle: ['#title', '.category-title'],
-  emojiImage: 'img.emoji',
+  emojiCategoryTitle: ['#title', '#category-title', '.category-title'],
+  /**
+   * Emoji images inside a category. Verified against a real live picker: the picker <img> elements
+   * carry role="option" and NO "emoji" class (that class only appears on the inserted node in the
+   * editor). We select images within a category renderer and filter for custom ones separately.
+   */
+  emojiImage: 'img',
+  /** Marker class on the member/custom emoji listbox (as opposed to CATEGORY_TYPE_GLOBAL/UNICODE). */
+  customCategoryClass: 'CATEGORY_TYPE_CUSTOM',
+  nonCustomCategoryClass: '.CATEGORY_TYPE_GLOBAL, .CATEGORY_TYPE_UNICODE_EMOJI',
   /** Inline emoji images YouTube places inside the editor. */
   editorEmojiImage: 'img',
 } as const;

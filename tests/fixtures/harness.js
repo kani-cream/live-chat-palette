@@ -3,7 +3,7 @@
 // It is a minimal simulation, not a copy of YouTube; real YouTube behaviour must be verified manually.
 
 /**
- * @typedef {{ name: string, emojis: { name: string, id: string, src: string }[] }} EmojiCategory
+ * @typedef {{ name: string, custom?: boolean, emojis: { name: string, shortcode?: string, id: string, src: string }[] }} EmojiCategory
  * @typedef {{
  *   categories?: EmojiCategory[],
  *   sendFails?: boolean,
@@ -85,6 +85,8 @@ export const installHarness = (doc, config = {}) => {
     }
   });
 
+  // Clicking a native picker emoji inserts an <img> into the input, exactly like YouTube:
+  // the inserted node carries class "emoji", data-emoji-id and alt (the display name).
   const bindEmojiImage = (img, emoji) => {
     img.addEventListener('click', () => {
       const inserted = doc.createElement('img');
@@ -97,10 +99,10 @@ export const installHarness = (doc, config = {}) => {
   };
 
   // A picker that was rendered server-side (pickerPreRendered fixtures) needs behaviour too.
-  for (const img of pickerHost?.querySelectorAll('yt-emoji-picker-renderer img.emoji') ?? []) {
+  for (const img of pickerHost?.querySelectorAll('yt-emoji-picker-category-renderer img') ?? []) {
     bindEmojiImage(img, {
       name: img.getAttribute('alt') ?? '',
-      id: img.getAttribute('data-emoji-id') ?? '',
+      id: img.getAttribute('id') ?? '',
       src: img.getAttribute('src') ?? '',
     });
   }
@@ -116,12 +118,16 @@ export const installHarness = (doc, config = {}) => {
       title.textContent = category.name;
       const grid = doc.createElement('div');
       grid.id = 'emoji';
+      grid.setAttribute('role', 'listbox');
+      // Real YouTube marks the member/custom emoji listbox with CATEGORY_TYPE_CUSTOM.
+      grid.className = category.custom ? 'CATEGORY_TYPE_CUSTOM' : 'CATEGORY_TYPE_UNICODE_EMOJI';
       for (const emoji of category.emojis) {
         const img = doc.createElement('img');
-        img.className = 'emoji';
+        img.setAttribute('role', 'option');
         img.setAttribute('alt', emoji.name);
-        img.setAttribute('shared-tooltip-text', emoji.name);
-        img.setAttribute('data-emoji-id', emoji.id);
+        // Custom emojis: aria-label is the :_shortcode:, id is "<channelId>/<hash>".
+        img.setAttribute('aria-label', emoji.shortcode ?? emoji.name);
+        img.setAttribute('id', emoji.id);
         img.setAttribute('src', emoji.src);
         bindEmojiImage(img, emoji);
         grid.append(img);

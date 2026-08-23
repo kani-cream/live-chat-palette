@@ -4,9 +4,12 @@ import { renderLiveChatBody, type LiveChatFixtureOptions } from '../fixtures/liv
 export const CH_A = 'UCaaaaaaaaaaaaaaaaaaaaaa';
 export const CH_B = 'UCbbbbbbbbbbbbbbbbbbbbbb';
 
+// Mirrors the verified real picker markup: custom (member) categories are CATEGORY_TYPE_CUSTOM with
+// each img carrying an aria-label shortcode; the smileys category is a non-custom unicode category.
 export const EMOJI_CATEGORIES = [
   {
     name: 'Channel A members',
+    custom: true,
     emojis: [
       { name: ':_wave:', id: `${CH_A}/wave`, src: 'https://img.example/a/wave.png' },
       { name: ':_heart:', id: `${CH_A}/heart`, src: 'https://img.example/a/heart.png' },
@@ -14,6 +17,7 @@ export const EMOJI_CATEGORIES = [
   },
   {
     name: 'Other family',
+    custom: true,
     emojis: [{ name: ':_wave:', id: `${CH_B}/wave`, src: 'https://img.example/b/wave.png' }],
   },
   {

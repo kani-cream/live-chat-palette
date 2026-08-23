@@ -24,10 +24,12 @@ export const renderPickerHtml = (categories: HarnessConfig['categories'] = []): 
   `<yt-emoji-picker-renderer><div id="categories">${categories
     .map(
       (category) =>
-        `<yt-emoji-picker-category-renderer><div id="title">${escapeHtml(category.name)}</div><div id="emoji">${category.emojis
+        `<yt-emoji-picker-category-renderer><div id="title">${escapeHtml(category.name)}</div><div id="emoji" role="listbox" class="${
+          category.custom ? 'CATEGORY_TYPE_CUSTOM' : 'CATEGORY_TYPE_UNICODE_EMOJI'
+        }">${category.emojis
           .map(
             (e) =>
-              `<img class="emoji" alt="${escapeHtml(e.name)}" shared-tooltip-text="${escapeHtml(e.name)}" data-emoji-id="${escapeHtml(e.id)}" src="${escapeHtml(e.src)}">`,
+              `<img role="option" alt="${escapeHtml(e.name)}" aria-label="${escapeHtml(e.shortcode ?? e.name)}" id="${escapeHtml(e.id)}" src="${escapeHtml(e.src)}">`,
           )
           .join('')}</div></yt-emoji-picker-category-renderer>`,
     )
