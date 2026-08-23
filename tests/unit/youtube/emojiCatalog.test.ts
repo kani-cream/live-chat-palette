@@ -1,0 +1,101 @@
+import { describe, expect, it } from 'vitest';
+import { extractCustomEmojis } from '../../../src/youtube/emojiCatalog';
+
+const CH = 'UCvzGlP9oQwU--Y0r9id_jnA';
+
+// Mirrors the real ytInitialData shape verified on a live stream: an emojiPickerRenderer with
+// wrapped categories (emojiPickerCategoryRenderer) whose emojiIds resolve against a flat emojis map.
+const initialData = (extra: Record<string, unknown> = {}) => ({
+  contents: {
+    liveChatRenderer: {
+      emojiPickerRenderer: {
+        categories: [
+          {
+            emojiPickerCategoryRenderer: {
+              categoryId: 'c1',
+              title: { simpleText: 'Subaru Ch. 大空スバル' },
+              categoryType: 'CATEGORY_TYPE_CUSTOM',
+              emojiIds: [`${CH}/wave`, `${CH}/heart`],
+            },
+          },
+          {
+            emojiPickerCategoryRenderer: {
+              categoryId: 'yt',
+              title: { simpleText: 'YouTube' },
+              categoryType: 'CATEGORY_TYPE_GLOBAL',
+              emojiIds: ['UCkszU2WH9gy1mb0dV-11UJg/x'],
+            },
+          },
+          {
+            emojiPickerCategoryRenderer: {
+              categoryId: 'u',
+              title: { runs: [{ text: 'Smileys' }] },
+              categoryType: 'CATEGORY_TYPE_UNICODE_EMOJI',
+              emojiIds: ['/grin'],
+            },
+          },
+        ],
+      },
+      emojis: [
+        {
+          emojiId: `${CH}/wave`,
+          shortcuts: [':スバルwave:', ':_スバルわたあめうさぎ:', ':_wave:'],
+          image: {
+            thumbnails: [
+              { url: 'https://yt3.ggpht.com/small=w24', width: 24 },
+              { url: 'https://yt3.ggpht.com/big=w48', width: 48 },
+            ],
+            accessibility: { accessibilityData: { label: 'スバルわたあめうさぎ' } },
+          },
+          isCustomEmoji: true,
+        },
+        {
+          emojiId: `${CH}/heart`,
+          shortcuts: [':_heart:'],
+          image: { thumbnails: [{ url: 'https://yt3.ggpht.com/heart' }] },
+          isCustomEmoji: true,
+        },
+        {
+          emojiId: 'UCkszU2WH9gy1mb0dV-11UJg/x',
+          shortcuts: [':globalthing:'],
+          image: { thumbnails: [{ url: 'https://yt3.ggpht.com/global' }] },
+          isCustomEmoji: false,
+        },
+      ],
+      ...extra,
+    },
+  },
+});
+
+describe('extractCustomEmojis', () => {
+  it('extracts only CATEGORY_TYPE_CUSTOM emojis with shortcode, image and family', () => {
+    const emojis = extractCustomEmojis(initialData());
+    expect(emojis).toEqual([
+      {
+        channelId: CH,
+        familyName: 'Subaru Ch. 大空スバル',
+        emojiName: ':_スバルわたあめうさぎ:', // the first :_ shortcode, not the leading : one
+        displayName: 'スバルわたあめうさぎ',
+        imageUrl: 'https://yt3.ggpht.com/big=w48', // the largest (last) thumbnail
+      },
+      {
+        channelId: CH,
+        familyName: 'Subaru Ch. 大空スバル',
+        emojiName: ':_heart:',
+        displayName: ':_heart:', // no accessibility label -> falls back to the shortcode
+        imageUrl: 'https://yt3.ggpht.com/heart',
+      },
+    ]);
+  });
+  it('returns [] for missing/garbage data', () => {
+    expect(extractCustomEmojis(undefined)).toEqual([]);
+    expect(extractCustomEmojis({})).toEqual([]);
+    expect(extractCustomEmojis({ x: { emojiPickerRenderer: {} } })).toEqual([]);
+  });
+  it('ignores emojiIds without a matching emoji entry', () => {
+    const data = initialData();
+    // Remove the heart from the emojis map; its category id should be skipped.
+    (data.contents.liveChatRenderer.emojis as unknown[]).splice(1, 1);
+    expect(extractCustomEmojis(data).map((e) => e.emojiName)).toEqual([':_スバルわたあめうさぎ:']);
+  });
+});

@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Live Chat Palette",
+    "description": "Chrome とウェブストアに表示される拡張機能名。"
+  },
+  "appDescription": {
+    "message": "YouTube ライブチャット用の定型文とお気に入りカスタム絵文字。ワンクリックで入力し、送信は明示的に行います。",
+    "description": "Chrome とウェブストアに表示される拡張機能の説明。"
+  }
+}
