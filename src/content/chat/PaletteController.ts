@@ -150,10 +150,15 @@ export class PaletteController {
   }
 
   private async onContextChange(context: VideoContext): Promise<void> {
+    const videoChanged = context.videoId !== this.state.context.videoId;
     const schema = await this.deps.repo.load();
     if (this.disposed) return;
     this.applySchema(schema, context, { resetEmojis: true });
-    this.setState({ notice: null, presetFormOpen: false, presetFormText: '' });
+    // Only reset an open preset form when the stream actually changed — not when the channel id
+    // simply resolves for the same video (which would otherwise close the form the user just opened).
+    if (videoChanged) {
+      this.setState({ notice: null, presetFormOpen: false, presetFormText: '' });
+    }
     if (context.channelId !== undefined) {
       await this.deps.emojis.rememberChannel(context.channelId, context.channelName);
     }

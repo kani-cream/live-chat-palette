@@ -286,6 +286,52 @@ describe('PaletteController – presets', () => {
     expect(t.qa('[data-testid="preset-emoji-option"]')).toHaveLength(0);
     t.controller.dispose();
   });
+  it('forces "this channel only" when the preset contains a channel emoji, frees it for text', async () => {
+    const t = await setup(); // context has channelId CH_A
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    const textarea = t.q<HTMLTextAreaElement>('[data-testid="preset-form-text"]');
+    const globalOption = t.q<HTMLOptionElement>(
+      '[data-testid="preset-form-scope"] option[value="global"]',
+    );
+    const select = t.q<HTMLSelectElement>('[data-testid="preset-form-scope"]');
+    if (!textarea || !globalOption || !select) throw new Error('form missing');
+    const type = (value: string): void => {
+      textarea.value = value;
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    // Plain text and standard emoji: "all channels" stays selectable.
+    type('hello 😀');
+    expect(globalOption.disabled).toBe(false);
+    expect(t.q('[data-testid="preset-scope-note"]')?.textContent).toBe('');
+    // A channel (member) emoji forces channel scope and disables "all channels".
+    type('おつ :_wave:');
+    expect(globalOption.disabled).toBe(true);
+    expect(select.value).toBe('channel');
+    expect(t.q('[data-testid="preset-scope-note"]')?.textContent).toBeTruthy();
+    // Removing it re-enables "all channels".
+    type('おつ');
+    expect(globalOption.disabled).toBe(false);
+    t.controller.dispose();
+  });
+  it('does not force channel scope for a member emoji when the channel is unknown', async () => {
+    const t = await setup({ context: { videoId: VIDEO_A } });
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    const textarea = t.q<HTMLTextAreaElement>('[data-testid="preset-form-text"]');
+    const globalOption = t.q<HTMLOptionElement>(
+      '[data-testid="preset-form-scope"] option[value="global"]',
+    );
+    if (!textarea || !globalOption) throw new Error('form missing');
+    textarea.value = ':_wave:';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    // Cannot scope to a channel we don't know, so global remains the only option (channel disabled).
+    expect(globalOption.disabled).toBe(false);
+    expect(
+      t.q<HTMLOptionElement>('[data-testid="preset-form-scope"] option[value="channel"]')?.disabled,
+    ).toBe(true);
+    t.controller.dispose();
+  });
   it('composes a multi-emoji preset segment-by-segment without a false insert error', async () => {
     const area = new FakeStorageArea();
     await new PresetService(new StorageRepository(area)).add({

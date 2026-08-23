@@ -28,6 +28,7 @@ export interface Strings {
   cancel: string;
   presetHint: string;
   presetHintInstant: string;
+  presetChannelEmojiNote: string;
   insertPreset: (text: string) => string;
   // Emojis
   emojiEmptyTitle: string;
@@ -99,6 +100,8 @@ const EN: Strings = {
   cancel: 'Cancel',
   presetHint: 'Click to insert. Cmd/Ctrl + Click to insert and send.',
   presetHintInstant: 'Instant send is on: clicking a preset inserts and sends it.',
+  presetChannelEmojiNote:
+    'This preset contains a channel emoji, so it can only be saved for this channel.',
   insertPreset: (text) => `Insert preset: ${text}`,
   emojiEmptyTitle: 'No favorite emojis yet.',
   emojiEmptyHint: "Open or refresh YouTube's emoji picker to discover available custom emojis.",
@@ -171,6 +174,8 @@ const JA: Strings = {
   cancel: 'キャンセル',
   presetHint: 'クリックで入力。Cmd/Ctrl + クリックで入力して送信します。',
   presetHintInstant: '即時送信がオン：定型文をクリックすると入力して送信します。',
+  presetChannelEmojiNote:
+    'この定型文はチャンネル限定の絵文字を含むため、このチャンネルのみに保存できます。',
   insertPreset: (text) => `定型文を入力: ${text}`,
   emojiEmptyTitle: 'お気に入りの絵文字がまだありません。',
   emojiEmptyHint:

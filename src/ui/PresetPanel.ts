@@ -7,7 +7,12 @@ import { renderEmptyState } from './EmptyState';
 import { renderableEmojis, type PaletteHandlers, type PaletteState } from './state';
 import { STRINGS } from './strings';
 
+/** Member/custom emojis use the `:_name:` shortcode form and only work on their own channel. */
+const MEMBER_EMOJI = /:_[^:\s]+:/;
+
 const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLElement => {
+  const channelKnown = state.context.channelId !== undefined;
+
   const textarea = h('textarea', {
     attrs: {
       rows: '2',
@@ -30,9 +35,32 @@ const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLE
     dataset: { testid: 'preset-form-preview' },
     attrs: { 'aria-hidden': 'true' },
   });
+
+  const globalOption = h('option', { text: STRINGS.scopeGlobal, attrs: { value: 'global' } });
+  const channelOption = h('option', {
+    text: STRINGS.scopeChannel,
+    attrs: { value: 'channel' },
+    props: { disabled: !channelKnown },
+  });
+  const select = h(
+    'select',
+    { attrs: { 'aria-label': STRINGS.presetScopeLabel }, dataset: { testid: 'preset-form-scope' } },
+    globalOption,
+    channelOption,
+  );
+  const scopeNote = h('p', {
+    className: 'lcp-hint',
+    dataset: { testid: 'preset-scope-note' },
+  });
+
   const sync = (): void => {
     handlers.onPresetFormInput(textarea.value);
     preview.replaceChildren(...renderEmojiText(textarea.value, renderableEmojis(state)));
+    // A channel-limited (member) emoji forces "this channel only"; text/standard emojis keep global.
+    const forceChannel = channelKnown && MEMBER_EMOJI.test(textarea.value);
+    globalOption.disabled = forceChannel;
+    if (forceChannel && select.value === 'global') select.value = 'channel';
+    scopeNote.textContent = forceChannel ? STRINGS.presetChannelEmojiNote : '';
   };
 
   const insertShortcode = (shortcode: string): void => {
@@ -47,20 +75,6 @@ const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLE
     sync();
   };
 
-  const channelKnown = state.context.channelId !== undefined;
-  const select = h(
-    'select',
-    {
-      attrs: { 'aria-label': STRINGS.presetScopeLabel },
-      dataset: { testid: 'preset-form-scope' },
-    },
-    h('option', { text: STRINGS.scopeGlobal, attrs: { value: 'global' } }),
-    h('option', {
-      text: STRINGS.scopeChannel,
-      attrs: { value: 'channel' },
-      props: { disabled: !channelKnown },
-    }),
-  );
   const submit = (event: Event): void => {
     event.preventDefault();
     const scope: PresetScope = select.value === 'channel' ? 'channel' : 'global';
@@ -74,6 +88,7 @@ const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLE
     preview,
     renderEmojiInserter(state, handlers, insertShortcode),
     h('label', {}, STRINGS.presetScopeLabel, select),
+    scopeNote,
     h(
       'div',
       { className: 'lcp-actions' },

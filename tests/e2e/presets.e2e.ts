@@ -1,4 +1,5 @@
 import {
+  CH_A,
   VIDEO_A,
   clearExtensionStorage,
   expect,
@@ -282,6 +283,38 @@ test.describe('preset insertion and sending', () => {
     await expect(
       root.getByRole('button', { name: 'Insert preset: channel only preset' }),
     ).toBeVisible();
+  });
+
+  test('a preset containing a channel emoji is forced to "this channel only"', async ({
+    page,
+    scenario,
+  }) => {
+    // Embed the emoji catalog so the channel resolves instantly on load (deterministic).
+    scenario.chat[VIDEO_A] = {
+      harness: { categories: [] },
+      initialDataEmojis: {
+        channelId: CH_A,
+        familyName: 'Channel A members',
+        emojis: [{ shortcut: ':_wave:', hash: 'wave', label: 'wave', url: '/fixtures/emoji.png' }],
+      },
+    };
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    // Wait until the channel is resolved (channel scope becomes selectable).
+    await root.getByRole('tab', { name: 'Presets' }).click();
+    await root.getByRole('button', { name: '+ Add preset' }).click();
+    await expect(
+      root.locator('[data-testid="preset-form-scope"] option[value="channel"]'),
+    ).toHaveJSProperty('disabled', false);
+    const globalOption = root.locator('[data-testid="preset-form-scope"] option[value="global"]');
+    // Plain text: "all channels" is selectable. (option.disabled is checked directly because
+    // Playwright's toBeDisabled/toBeEnabled do not reliably reflect a disabled <option>.)
+    await root.locator('[data-testid="preset-form-text"]').fill('hello');
+    await expect(globalOption).toHaveJSProperty('disabled', false);
+    // With a member emoji: "all channels" is disabled and the scope is forced to this channel.
+    await root.locator('[data-testid="preset-form-text"]').fill('おつ :_wave:');
+    await expect(globalOption).toHaveJSProperty('disabled', true);
+    await expect(root.locator('[data-testid="preset-form-scope"]')).toHaveValue('channel');
   });
 
   test('channel presets only appear on their channel', async ({ page, serviceWorker }) => {
