@@ -239,6 +239,49 @@ describe('PaletteController – presets', () => {
     expect(t.q('.lcp-notice[data-kind="error"]')?.textContent).toContain('must not be empty');
     t.controller.dispose();
   });
+  it('renders member-emoji shortcodes in preset chips as images once discovered', async () => {
+    const area = new FakeStorageArea();
+    await new PresetService(new StorageRepository(area)).add({
+      text: 'おつ :_wave:',
+      scope: 'global',
+    });
+    const t = await setup({ area });
+    // Discover the channel's custom emojis so the shortcode can be resolved to an image.
+    t.click(t.q('[data-focus-key="emoji-refresh"]'));
+    await t.settle(50);
+    t.click(t.q('[data-testid="tab-preset"]'));
+    const chip = t.q('.lcp-preset-chip');
+    expect(chip?.querySelector('img.lcp-inline-emoji')).not.toBeNull();
+    expect(chip?.textContent).toContain('おつ');
+    // The full text stays in the accessible name for screen readers.
+    expect(chip?.getAttribute('aria-label')).toContain(':_wave:');
+    t.controller.dispose();
+  });
+  it('inserts an emoji shortcode into the preset form via the emoji strip (no copy-paste)', async () => {
+    const t = await setup();
+    t.click(t.q('[data-focus-key="emoji-refresh"]'));
+    await t.settle(50);
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    const options = t.qa('[data-testid="preset-emoji-option"]');
+    expect(options.length).toBeGreaterThan(0);
+    t.click(options[0] ?? null);
+    const textarea = t.q<HTMLTextAreaElement>('[data-testid="preset-form-text"]');
+    expect(textarea?.value).toBe(':_wave:');
+    // The live preview shows it as an image.
+    expect(
+      t.q('[data-testid="preset-form-preview"]')?.querySelector('img.lcp-inline-emoji'),
+    ).not.toBeNull();
+    t.controller.dispose();
+  });
+  it('offers a refresh action in the preset form when no emojis are discovered yet', async () => {
+    const t = await setup();
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    expect(t.q('[data-testid="preset-emoji-refresh"]')).not.toBeNull();
+    expect(t.qa('[data-testid="preset-emoji-option"]')).toHaveLength(0);
+    t.controller.dispose();
+  });
   it('normal click inserts only; Cmd/Ctrl+Click inserts and sends once', async () => {
     const t = await setup();
     await addPresetViaForm(t, 'Hello');

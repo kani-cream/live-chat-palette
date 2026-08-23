@@ -50,6 +50,34 @@ test.describe('preset insertion and sending', () => {
     expect(stored.presets.map((p) => p.text)).toEqual(['Thanks for the stream!']);
   });
 
+  test('builds an emoji preset via the strip and shows it as an image in the chip', async ({
+    page,
+    serviceWorker,
+  }) => {
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    // Discover the channel's custom emojis (Emojis tab), then compose a preset in the Presets tab.
+    await root.getByRole('button', { name: 'Refresh emojis' }).click();
+    await expect(root.locator('[data-testid="available-emoji"]').first()).toBeVisible();
+    await root.getByRole('tab', { name: 'Presets' }).click();
+    await root.getByRole('button', { name: '+ Add preset' }).click();
+    await root.locator('[data-testid="preset-form-text"]').fill('おつ ');
+    // Click a discovered emoji to append its exact shortcode — no copy-paste needed.
+    await root.locator('[data-testid="preset-emoji-option"]').first().click();
+    await expect(root.locator('[data-testid="preset-form-text"]')).toHaveValue('おつ :_wave:');
+    // The form preview renders it as an image.
+    await expect(
+      root.locator('[data-testid="preset-form-preview"] img.lcp-inline-emoji'),
+    ).toBeVisible();
+    await root.locator('[data-testid="preset-form-save"]').click();
+    // The saved chip renders the emoji image, and the accessible name keeps the shortcode text.
+    const chip = root.getByRole('button', { name: 'Insert preset: おつ :_wave:' });
+    await expect(chip).toBeVisible();
+    await expect(chip.locator('img.lcp-inline-emoji')).toBeVisible();
+    const stored = await readExtensionStorage(serviceWorker);
+    expect(stored.presets.map((p) => p.text)).toEqual(['おつ :_wave:']);
+  });
+
   test('keeps the preset form text while chat messages keep streaming in', async ({ page }) => {
     const frame = await openWatchPage(page, VIDEO_A);
     const root = palette(frame);

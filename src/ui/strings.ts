@@ -40,6 +40,8 @@ export interface Strings {
   addFavorite: (name: string) => string;
   removeFavorite: (name: string) => string;
   insertEmoji: (name: string) => string;
+  insertEmojiTitle: string;
+  insertEmojiHint: string;
   emojiUnavailableBadge: string;
   // Error / state notices
   emojiUnavailable: string;
@@ -108,6 +110,8 @@ const EN: Strings = {
   addFavorite: (name) => `Add ${name} to favorites`,
   removeFavorite: (name) => `Remove ${name} from favorites`,
   insertEmoji: (name) => `Insert ${name}`,
+  insertEmojiTitle: 'Insert a custom emoji',
+  insertEmojiHint: "Refresh from the Emojis tab to insert this channel's custom emojis here.",
   emojiUnavailableBadge: 'Currently unavailable',
   emojiUnavailable: 'This favorite emoji is not currently available.',
   chatUnsupported: "YouTube's chat input could not be recognized.",
@@ -179,6 +183,9 @@ const JA: Strings = {
   addFavorite: (name) => `${name} をお気に入りに追加`,
   removeFavorite: (name) => `${name} をお気に入りから削除`,
   insertEmoji: (name) => `${name} を入力`,
+  insertEmojiTitle: 'カスタム絵文字を挿入',
+  insertEmojiHint:
+    '「絵文字」タブで更新すると、このチャンネルのカスタム絵文字をここから挿入できます。',
   emojiUnavailableBadge: '現在利用できません',
   emojiUnavailable: 'このお気に入り絵文字は現在利用できません。',
   chatUnsupported: 'YouTube のチャット入力欄を認識できませんでした。',
