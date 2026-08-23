@@ -4,8 +4,12 @@ export interface WatchPageOptions {
   channelName?: string;
   /** Render an explicit /channel/UC... owner link (strategy A). Default: handle link only. */
   ownerChannelLink?: boolean;
-  /** Render <meta itemprop="channelId"> and <meta itemprop="identifier"> (strategy B). */
+  /** Render the schema.org author microdata block, incl. identifier (enables strategies B/C). */
   headMeta?: boolean;
+  /** Within the author microdata, render <link itemprop="url" href=".../channel/UC..."> (strategy B). */
+  authorChannelUrl?: boolean;
+  /** Render <meta itemprop="channelId"> (strategy C). */
+  metaChannelId?: boolean;
   /** Make the head metadata describe a different video (stale after SPA navigation). */
   staleMetaVideoId?: string;
   chatFrameSrc?: string;
@@ -31,9 +35,13 @@ export const renderOwnerBlock = (options: WatchPageOptions): string => {
 export const renderHeadMeta = (options: WatchPageOptions): string => {
   if (!options.headMeta) return '';
   const metaVideo = options.staleMetaVideoId ?? options.videoId;
+  const authorUrl =
+    options.authorChannelUrl && options.channelId
+      ? `<link itemprop="url" href="https://www.youtube.com/channel/${escapeHtml(options.channelId)}">`
+      : '';
   return `<meta itemprop="identifier" content="${escapeHtml(metaVideo)}">
-    ${options.channelId ? `<meta itemprop="channelId" content="${escapeHtml(options.channelId)}">` : ''}
-    <span itemprop="author" itemscope itemtype="http://schema.org/Person"><link itemprop="name" content="${escapeHtml(options.channelName ?? 'Some Channel')}"></span>`;
+    ${options.metaChannelId && options.channelId ? `<meta itemprop="channelId" content="${escapeHtml(options.channelId)}">` : ''}
+    <span itemprop="author" itemscope itemtype="http://schema.org/Person"><link itemprop="name" content="${escapeHtml(options.channelName ?? 'Some Channel')}">${authorUrl}</span>`;
 };
 
 /** Minimal watch page with an embedded Live Chat iframe and an SPA-navigation harness. */

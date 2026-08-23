@@ -193,6 +193,27 @@ test.describe('preset insertion and sending', () => {
     expect(state.input).toBe('Hi');
   });
 
+  test('channel scope is selectable when the channel resolves only via author microdata', async ({
+    page,
+    scenario,
+  }) => {
+    // Owner block has a handle-only link (no /channel/UC), like most real watch pages; the channel
+    // is resolved from the schema.org author microdata instead.
+    scenario.watch[VIDEO_A] = {
+      videoId: VIDEO_A,
+      channelId: 'UCaaaaaaaaaaaaaaaaaaaaaa',
+      channelName: 'Channel A',
+      headMeta: true,
+      authorChannelUrl: true,
+    };
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    await root.getByRole('tab', { name: 'Presets' }).click();
+    await root.getByRole('button', { name: '+ Add preset' }).click();
+    const channelOption = root.locator('[data-testid="preset-form-scope"] option[value="channel"]');
+    await expect(channelOption).toBeEnabled();
+  });
+
   test('channel presets only appear on their channel', async ({ page, serviceWorker }) => {
     await seedPresets(serviceWorker, [
       { text: 'global', scope: 'global' },

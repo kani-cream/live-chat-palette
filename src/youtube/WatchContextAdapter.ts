@@ -13,10 +13,11 @@ const CHANNEL_HREF = /\/channel\/(UC[\w-]{22})(?:[/?#]|$)/;
 /**
  * Resolves video/channel context from the watch page.
  * Channel detection strategies (in order):
- *  A. explicit /channel/UC... link in the owner block
- *  B. server-rendered <meta itemprop="channelId">, accepted only while the
- *     sibling video identifier meta still equals the current URL's video id
- *     (YouTube does not refresh head metadata on SPA navigation)
+ *  A. explicit /channel/UC... link in the owner block (live; updates on SPA navigation)
+ *  B. schema.org author microdata channel URL (/channel/UC...)
+ *  C. server-rendered <meta itemprop="channelId">
+ * B and C are only trusted while the sibling video identifier meta still equals the current URL's
+ * video id, since that microdata is not guaranteed to refresh on SPA navigation.
  * Anything else -> null (fail closed; channel features disable themselves).
  */
 export class DomWatchContextAdapter implements WatchContextAdapter {
@@ -39,7 +40,11 @@ export class DomWatchContextAdapter implements WatchContextAdapter {
   }
 
   detectChannelId(): string | null {
-    return this.channelFromOwnerLink() ?? this.channelFromFreshMeta();
+    return (
+      this.channelFromOwnerLink() ??
+      this.channelFromAuthorMicrodata() ??
+      this.channelFromFreshMeta()
+    );
   }
 
   detectChannelName(): string | null {
@@ -73,6 +78,20 @@ export class DomWatchContextAdapter implements WatchContextAdapter {
         return match?.[1] && isChannelId(match[1]) ? [match[1]] : [];
       }),
     );
+    if (ids.size !== 1) return null;
+    return [...ids][0] ?? null;
+  }
+
+  private channelFromAuthorMicrodata(): string | null {
+    if (!this.isHeadMetadataFresh()) return null;
+    const ids = new Set<string>();
+    for (const selector of WATCH_SELECTORS.authorChannelUrl) {
+      for (const el of this.doc.querySelectorAll(selector)) {
+        const href = el.getAttribute('href') ?? el.getAttribute('content') ?? '';
+        const match = CHANNEL_HREF.exec(href);
+        if (match?.[1] && isChannelId(match[1])) ids.add(match[1]);
+      }
+    }
     if (ids.size !== 1) return null;
     return [...ids][0] ?? null;
   }

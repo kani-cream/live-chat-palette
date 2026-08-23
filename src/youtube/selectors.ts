@@ -41,6 +41,12 @@ export const WATCH_SELECTORS = {
   metaChannelId: 'meta[itemprop="channelId"]',
   metaVideoIdentifier: ['meta[itemprop="identifier"]', 'meta[itemprop="videoId"]'],
   metaAuthorName: 'span[itemprop="author"] link[itemprop="name"]',
+  /** schema.org author microdata; its channel URL contains the stable /channel/UC id. */
+  authorChannelUrl: [
+    'span[itemprop="author"] link[itemprop="url"]',
+    'span[itemprop="author"] a[itemprop="url"]',
+    '[itemprop="author"] [itemprop="url"][href*="/channel/UC"]',
+  ],
 } as const;
 
 export const FRAME_HOSTS = ['www.youtube.com'] as const;

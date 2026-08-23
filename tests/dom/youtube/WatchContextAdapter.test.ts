@@ -37,21 +37,41 @@ describe('DomWatchContextAdapter.detectChannelId', () => {
       mount({ videoId: VIDEO_A, channelId: CH_A, ownerChannelLink: true }).detectChannelId(),
     ).toBe(CH_A);
   });
-  it('uses fresh head metadata when the owner block only has a handle link', () => {
-    expect(mount({ videoId: VIDEO_A, channelId: CH_A, headMeta: true }).detectChannelId()).toBe(
-      CH_A,
-    );
+  it('uses the author microdata channel URL when the owner block only has a handle link', () => {
+    expect(
+      mount({
+        videoId: VIDEO_A,
+        channelId: CH_A,
+        headMeta: true,
+        authorChannelUrl: true,
+      }).detectChannelId(),
+    ).toBe(CH_A);
   });
-  it('rejects stale head metadata after SPA navigation (identifier != current video)', () => {
+  it('uses meta[itemprop=channelId] when present and fresh', () => {
+    expect(
+      mount({
+        videoId: VIDEO_A,
+        channelId: CH_A,
+        headMeta: true,
+        metaChannelId: true,
+      }).detectChannelId(),
+    ).toBe(CH_A);
+  });
+  it('rejects a stale author channel URL after SPA navigation (identifier != current video)', () => {
     const adapter = mount({
       videoId: VIDEO_B,
       channelId: CH_A,
       headMeta: true,
+      authorChannelUrl: true,
+      metaChannelId: true,
       staleMetaVideoId: VIDEO_A,
     });
     expect(adapter.detectChannelId()).toBeNull();
   });
-  it('fails closed with handle-only links and no metadata', () => {
+  it('fails closed with handle-only links and no channel microdata', () => {
+    expect(
+      mount({ videoId: VIDEO_A, channelId: CH_A, headMeta: true }).detectChannelId(),
+    ).toBeNull();
     expect(mount({ videoId: VIDEO_A, channelId: CH_A }).detectChannelId()).toBeNull();
   });
   it('fails closed when several different channel links exist', () => {
