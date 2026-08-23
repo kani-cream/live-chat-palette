@@ -58,6 +58,27 @@ describe('ContextService', () => {
     expect(await service.start()).toEqual({ channelId: CH_A, videoId: VIDEO_A });
   });
 
+  it('fills in the channel from a local hint when the watch frame has not resolved one', async () => {
+    const { service, broadcast } = setup({ videoId: VIDEO_A });
+    await service.start();
+    const listener = vi.fn();
+    service.onChange(listener);
+    service.applyChannelHint(CH_A);
+    expect(service.context).toEqual({ videoId: VIDEO_A, channelId: CH_A });
+    expect(listener).toHaveBeenCalledWith({ videoId: VIDEO_A, channelId: CH_A });
+    // A later watch-frame update without a channelId keeps the hinted channel.
+    broadcast({ videoId: VIDEO_A });
+    expect(service.context.channelId).toBe(CH_A);
+  });
+
+  it('lets the watch-frame channelId take precedence over the hint', async () => {
+    const { service, broadcast } = setup({ videoId: VIDEO_A });
+    await service.start();
+    service.applyChannelHint(CH_B);
+    broadcast({ videoId: VIDEO_A, channelId: CH_A });
+    expect(service.context.channelId).toBe(CH_A);
+  });
+
   it('stops listening on stop()', async () => {
     const { service, broadcast, listeners } = setup({});
     await service.start();

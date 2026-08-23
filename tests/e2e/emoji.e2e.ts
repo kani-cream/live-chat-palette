@@ -1,6 +1,7 @@
 import {
   CH_A,
   VIDEO_A,
+  chatFrame,
   clearExtensionStorage,
   expect,
   harnessState,
@@ -9,6 +10,7 @@ import {
   readExtensionStorage,
   seedExtensionStorage,
   test,
+  watchUrl,
 } from './extension';
 
 test.describe('custom emoji favorites', () => {
@@ -55,6 +57,29 @@ test.describe('custom emoji favorites', () => {
         .getByRole('button', { name: 'Insert preset: おつ :_wave:' })
         .locator('img.lcp-inline-emoji'),
     ).toBeVisible();
+  });
+
+  test('resolves the channel from the emoji catalog when the watch frame cannot', async ({
+    page,
+    scenario,
+  }) => {
+    // Watch frame exposes no channel id (handle-only owner, no metadata) — as on a first visit
+    // before detection settles. The channel must be resolved from the emoji catalog instead.
+    scenario.watch[VIDEO_A] = { videoId: VIDEO_A };
+    scenario.chat[VIDEO_A] = {
+      harness: { categories: [] },
+      initialDataEmojis: {
+        channelId: CH_A,
+        familyName: 'Channel A members',
+        emojis: [{ shortcut: ':_wave:', hash: 'wave', label: 'wave', url: '/fixtures/emoji.png' }],
+      },
+    };
+    await page.goto(watchUrl(VIDEO_A));
+    const root = palette(chatFrame(page));
+    await expect(root.locator('[data-testid="lcp-panel"]')).toBeVisible();
+    // Emojis appear from the first load; the channel-unknown message does not.
+    await expect(root.locator('[data-testid="available-emoji"]')).toHaveCount(1);
+    await expect(root.getByText('Channel information could not be determined')).toHaveCount(0);
   });
 
   test('refresh discovers custom emojis via the native picker and closes it again', async ({
