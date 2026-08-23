@@ -12,6 +12,7 @@ const mode = process.env.NODE_ENV === 'development' ? 'development' : 'productio
 
 const SCRIPT_ENTRIES = [
   { entry: 'src/content/chat/chatContent.ts', out: 'content/chat' },
+  { entry: 'src/content/chat/mainWorldEmojis.ts', out: 'content/mainEmojis' },
   { entry: 'src/content/watch/watchContent.ts', out: 'content/watch' },
   { entry: 'src/background/serviceWorker.ts', out: 'background/serviceWorker' },
 ];

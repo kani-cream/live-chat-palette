@@ -13,7 +13,7 @@ own native chat input and send button rather than any private API.
 ## Features
 
 - **Message presets** — global (all channels) and per-channel, added/edited/deleted/reordered.
-- **Favorite custom emojis** — discovered from YouTube's native emoji picker, scoped per channel.
+- **Favorite custom emojis** — discovered automatically on page load from YouTube's own data (no manual refresh), scoped per channel, and re-cached each visit so creator stamp updates are picked up.
 - **Emoji-aware presets** — build presets containing member-emoji shortcodes by clicking a discovered emoji (no copy-paste); the palette renders those shortcodes as images so you can tell what they are.
 - **Safe insertion** — presets and emojis are inserted at the caret, replacing a selection when one
   exists, with **no automatic whitespace** (important for Japanese and other languages).

@@ -3,14 +3,32 @@ import { createChatContentScript } from '../../../src/content/chat/chatContent';
 import { createWatchContentScript } from '../../../src/content/watch/watchContent';
 import { MOUNT_ROOT_ATTRIBUTE } from '../../../src/youtube/PaletteAnchorAdapter';
 import { installFakeChrome } from '../../helpers/fakeChromeGlobal';
-import { mountLiveChat } from '../../helpers/liveChatDom';
+import { CH_A, mountLiveChat } from '../../helpers/liveChatDom';
 
-const fakeWindow = (href: string, isTop: boolean): Window => {
+type MessageListener = (event: MessageEvent) => void;
+
+const fakeWindow = (href: string, isTop: boolean) => {
+  const listeners: MessageListener[] = [];
+  const posted: unknown[] = [];
   const win = {
     location: new URL(href),
     matchMedia: undefined,
-  } as unknown as Window & { top: Window | null };
+    addEventListener: (type: string, listener: MessageListener) => {
+      if (type === 'message') listeners.push(listener);
+    },
+    postMessage: (message: unknown) => {
+      posted.push(message);
+    },
+  } as unknown as Window & {
+    top: Window | null;
+    deliver: (data: unknown) => void;
+    posted: unknown[];
+  };
   win.top = isTop ? win : ({} as Window);
+  win.posted = posted;
+  win.deliver = (data: unknown) => {
+    for (const listener of listeners) listener({ source: win, data } as unknown as MessageEvent);
+  };
   return win;
 };
 
@@ -36,6 +54,36 @@ describe('content script frame roles', () => {
     expect(document.querySelectorAll(`[${MOUNT_ROOT_ATTRIBUTE}]`)).toHaveLength(1);
     embedded?.stop();
     expect(document.querySelectorAll(`[${MOUNT_ROOT_ATTRIBUTE}]`)).toHaveLength(0);
+  });
+  it('requests and caches the custom-emoji catalog posted from the MAIN world', async () => {
+    mountLiveChat();
+    const win = fakeWindow('https://www.youtube.com/live_chat?v=aaaaaaaaaaa', true);
+    const controller = createChatContentScript(document, win);
+    // On init it asks the MAIN-world script to (re)post the catalog.
+    const posted = (win as unknown as { posted: Record<string, unknown>[] }).posted;
+    expect(posted.some((m) => m.__lcpEmojiCatalogRequest === true)).toBe(true);
+    // Delivering a catalog message caches the emojis in storage (no palette mount required).
+    (win as unknown as { deliver: (d: unknown) => void }).deliver({
+      __lcpEmojiCatalog: true,
+      emojis: [
+        {
+          channelId: CH_A,
+          familyName: 'Members',
+          emojiName: ':_wave:',
+          displayName: 'wave',
+          imageUrl: 'https://img.example/wave.png',
+        },
+        { channelId: 'bad', emojiName: '' }, // spoofed/invalid -> dropped
+      ],
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    const stored = await chromeEnv.local.get('liveChatPalette');
+    const schema = stored.liveChatPalette as {
+      emojiCatalog: Record<string, { emojiName: string }[]>;
+    };
+    expect(schema.emojiCatalog[CH_A]?.map((e) => e.emojiName)).toEqual([':_wave:']);
+    controller?.stop();
   });
   it('chat script also runs in a popped-out chat (top frame)', () => {
     mountLiveChat();

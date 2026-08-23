@@ -29,6 +29,13 @@
       "all_frames": true,
       "js": ["content/chat.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.youtube.com/live_chat*"],
+      "all_frames": true,
+      "js": ["content/mainEmojis.js"],
+      "world": "MAIN",
+      "run_at": "document_idle"
     }
   ]
 }

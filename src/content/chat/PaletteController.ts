@@ -133,14 +133,19 @@ export class PaletteController {
     context: VideoContext,
     options: { resetEmojis?: boolean } = {},
   ): void {
+    // availableEmojis is derived from the persisted per-channel catalog, so when the MAIN-world
+    // discovery caches emojis (or a Refresh updates them), the storage subscription re-renders here.
+    const cached =
+      context.channelId !== undefined ? (schema.emojiCatalog[context.channelId] ?? []) : [];
     this.setState({
       context,
       presets: presetsForChannel(schema.presets, context.channelId),
       favorites: favoritesForChannel(schema.favoriteEmojis, context.channelId),
+      availableEmojis: cached,
       presetInstantSend: schema.settings.presetInstantSend,
       collapsed: schema.settings.collapsed,
       tab: schema.settings.lastSelectedTab,
-      ...(options.resetEmojis ? { availableEmojis: [], emojiScan: 'idle' as const } : {}),
+      ...(options.resetEmojis ? { emojiScan: 'idle' as const } : {}),
     });
   }
 
@@ -151,10 +156,6 @@ export class PaletteController {
     this.setState({ notice: null, presetFormOpen: false, presetFormText: '' });
     if (context.channelId !== undefined) {
       await this.deps.emojis.rememberChannel(context.channelId, context.channelName);
-      // Show cached emojis immediately (no intrusive picker open); a live Refresh updates the cache.
-      const cached = await this.deps.emojis.catalogFor(context.channelId);
-      if (this.disposed || this.state.context.channelId !== context.channelId) return;
-      this.setState({ availableEmojis: cached });
     }
   }
 
@@ -177,14 +178,10 @@ export class PaletteController {
         this.setState({ emojiScan: 'unsupported' });
         return;
       }
+      // recordScan persists into the catalog; the storage subscription refreshes availableEmojis.
       await this.deps.emojis.recordScan(scanned.value);
-      // Show the accumulated catalog (a partial live scan must not shrink what we already cached).
-      const catalog = await this.deps.emojis.catalogFor(channelId);
       if (this.disposed || this.state.context.channelId !== channelId) return;
-      this.setState({
-        availableEmojis: catalog.length > 0 ? catalog : scanned.value,
-        emojiScan: 'scanned',
-      });
+      this.setState({ emojiScan: 'scanned' });
     } finally {
       if (openedByUs) await this.deps.emojiPicker.closePicker();
     }

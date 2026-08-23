@@ -16,6 +16,47 @@ test.describe('custom emoji favorites', () => {
     await clearExtensionStorage(serviceWorker);
   });
 
+  test('discovers custom emojis automatically on load (no picker, no Refresh)', async ({
+    page,
+    serviceWorker,
+    scenario,
+  }) => {
+    // The live_chat page embeds window.ytInitialData; the MAIN-world script reads it and caches the
+    // emojis with no user action. Seed a preset that uses one of them.
+    scenario.chat[VIDEO_A] = {
+      harness: { categories: [] },
+      initialDataEmojis: {
+        channelId: CH_A,
+        familyName: 'Channel A members',
+        emojis: [
+          { shortcut: ':_wave:', hash: 'wave', label: 'wave', url: '/fixtures/emoji.png' },
+          { shortcut: ':_heart:', hash: 'heart', label: 'heart', url: '/fixtures/emoji.png' },
+        ],
+      },
+    };
+    await seedExtensionStorage(serviceWorker, {
+      schemaVersion: 1,
+      settings: { presetInstantSend: false, collapsed: false, lastSelectedTab: 'emoji' },
+      presets: [
+        { id: 'p', text: 'おつ :_wave:', scope: 'global', order: 0, createdAt: 0, updatedAt: 0 },
+      ],
+      favoriteEmojis: [],
+      channels: {},
+    });
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    // The emojis were cached automatically -> the "available" grid is populated without a Refresh.
+    await expect(root.locator('[data-testid="available-emoji"]').first()).toBeVisible();
+    await expect(root.locator('[data-testid="available-emoji"]')).toHaveCount(2);
+    // And the preset chip renders its shortcode as an image on load.
+    await root.getByRole('tab', { name: 'Presets' }).click();
+    await expect(
+      root
+        .getByRole('button', { name: 'Insert preset: おつ :_wave:' })
+        .locator('img.lcp-inline-emoji'),
+    ).toBeVisible();
+  });
+
   test('refresh discovers custom emojis via the native picker and closes it again', async ({
     page,
   }) => {

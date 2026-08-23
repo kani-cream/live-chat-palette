@@ -14,8 +14,29 @@ import { detectFrameRole, videoIdFromChatUrl } from '../../youtube/frame';
 import { DomPaletteAnchorAdapter } from '../../youtube/PaletteAnchorAdapter';
 import { DomSendButtonAdapter } from '../../youtube/SendButtonAdapter';
 import { detectAndApplyLang } from '../../ui/strings';
+import {
+  CATALOG_REQUEST,
+  parseCatalogMessage,
+  type EmojiCatalogRequest,
+} from './emojiCatalogBridge';
 import { MountController } from './mountController';
 import { PaletteController } from './PaletteController';
+
+/**
+ * Receive the custom-emoji catalog posted by the MAIN-world script and cache it. This runs
+ * independently of whether the palette is mounted, so discovery happens automatically on load and
+ * on SPA navigation without the user opening the picker or pressing Refresh.
+ */
+const listenForEmojiCatalog = (win: Window, emojis: EmojiService): void => {
+  win.addEventListener('message', (event: MessageEvent) => {
+    if (event.source !== win) return;
+    const catalog = parseCatalogMessage(event.data);
+    if (catalog && catalog.length > 0) void emojis.recordScan(catalog);
+  });
+  // Ask the MAIN-world script to (re)post, in case it ran before this listener was registered.
+  const request: EmojiCatalogRequest = { [CATALOG_REQUEST]: true };
+  win.postMessage(request, win.location.origin);
+};
 
 export const createChatContentScript = (doc: Document, win: Window): MountController | null => {
   const role = detectFrameRole({ href: win.location.href, isTopFrame: win.top === win });
@@ -23,6 +44,7 @@ export const createChatContentScript = (doc: Document, win: Window): MountContro
   detectAndApplyLang();
 
   const repo = new StorageRepository(chromeStorageArea(chrome.storage.local, 'local'));
+  listenForEmojiCatalog(win, new EmojiService(repo));
   const chatInput = new DomChatInputAdapter(doc);
   const sendButton = new DomSendButtonAdapter(doc);
   const emojiPicker = new DomEmojiPickerAdapter(doc, chatInput);

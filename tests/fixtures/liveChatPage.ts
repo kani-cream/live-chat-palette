@@ -15,7 +15,44 @@ export interface LiveChatFixtureOptions {
   initialDraft?: string;
   dark?: boolean;
   harness?: HarnessConfig;
+  /** Embed a `window.ytInitialData` with these custom emojis (drives MAIN-world auto-discovery). */
+  initialDataEmojis?: InitialDataEmojis;
 }
+
+export interface InitialDataEmojis {
+  channelId: string;
+  familyName: string;
+  emojis: { shortcut: string; hash: string; label: string; url: string }[];
+}
+
+/** Build a minimal ytInitialData matching the real emojiPickerRenderer/emojis shape. */
+export const buildYtInitialData = (spec: InitialDataEmojis): unknown => ({
+  contents: {
+    liveChatRenderer: {
+      emojiPickerRenderer: {
+        categories: [
+          {
+            emojiPickerCategoryRenderer: {
+              categoryId: 'custom',
+              title: { simpleText: spec.familyName },
+              categoryType: 'CATEGORY_TYPE_CUSTOM',
+              emojiIds: spec.emojis.map((e) => `${spec.channelId}/${e.hash}`),
+            },
+          },
+        ],
+      },
+      emojis: spec.emojis.map((e) => ({
+        emojiId: `${spec.channelId}/${e.hash}`,
+        shortcuts: [e.shortcut],
+        image: {
+          thumbnails: [{ url: e.url }],
+          accessibility: { accessibilityData: { label: e.label } },
+        },
+        isCustomEmoji: true,
+      })),
+    },
+  },
+});
 
 const escapeHtml = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -84,6 +121,11 @@ export const renderLiveChatPage = (options: LiveChatFixtureOptions = {}): string
 #emoji-picker-host[hidden]{display:none}</style>
 </head>
 <body>
+${
+  options.initialDataEmojis
+    ? `<script>window.ytInitialData = ${JSON.stringify(buildYtInitialData(options.initialDataEmojis))};</script>`
+    : ''
+}
 ${renderLiveChatBody(options)}
 <script type="module">
   import { installHarness } from '/fixtures/harness.js';
