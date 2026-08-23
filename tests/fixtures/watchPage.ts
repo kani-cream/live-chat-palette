@@ -6,9 +6,11 @@ export interface WatchPageOptions {
   ownerChannelLink?: boolean;
   /** Render the schema.org author microdata block, incl. identifier (enables strategies B/C). */
   headMeta?: boolean;
-  /** Within the author microdata, render <link itemprop="url" href=".../channel/UC..."> (strategy B). */
+  /** Within the author microdata, render <link itemprop="url" href=".../channel/UC..."> (strategy C). */
   authorChannelUrl?: boolean;
-  /** Render <meta itemprop="channelId"> (strategy C). */
+  /** Render an inline ytInitialPlayerResponse script carrying videoDetails.channelId (strategy B). */
+  playerResponseScript?: boolean;
+  /** Render <meta itemprop="channelId"> (strategy D). */
   metaChannelId?: boolean;
   /** Make the head metadata describe a different video (stale after SPA navigation). */
   staleMetaVideoId?: string;
@@ -44,6 +46,22 @@ export const renderHeadMeta = (options: WatchPageOptions): string => {
     <span itemprop="author" itemscope itemtype="http://schema.org/Person"><link itemprop="name" content="${escapeHtml(options.channelName ?? 'Some Channel')}">${authorUrl}</span>`;
 };
 
+/** Inline player-response script, mirroring how YouTube embeds videoDetails.channelId. */
+export const renderPlayerResponseScript = (options: WatchPageOptions): string => {
+  if (!options.playerResponseScript || !options.channelId) return '';
+  const videoId = options.staleMetaVideoId ?? options.videoId;
+  const json = JSON.stringify({
+    responseContext: {},
+    videoDetails: {
+      videoId,
+      title: options.channelName ?? 'Stream',
+      channelId: options.channelId,
+      isLiveContent: true,
+    },
+  });
+  return `<script>var ytInitialPlayerResponse = ${json};</script>`;
+};
+
 /** Minimal watch page with an embedded Live Chat iframe and an SPA-navigation harness. */
 export const renderWatchPage = (options: WatchPageOptions): string => {
   const chatSrc = options.chatFrameSrc ?? `https://www.youtube.com/live_chat?v=${options.videoId}`;
@@ -53,6 +71,7 @@ export const renderWatchPage = (options: WatchPageOptions): string => {
 <style>body{margin:0;font-family:sans-serif}#chatframe{width:400px;height:600px;border:1px solid #ccc}</style>
 </head>
 <body>
+${renderPlayerResponseScript(options)}
 <ytd-app>
   <ytd-watch-flexy video-id="${escapeHtml(options.videoId)}">
     <div id="primary"><div id="owner">${renderOwnerBlock(options)}</div></div>

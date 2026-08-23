@@ -214,6 +214,33 @@ test.describe('preset insertion and sending', () => {
     await expect(channelOption).toBeEnabled();
   });
 
+  test('channel scope resolves from the inline player response (real hololive-style page)', async ({
+    page,
+    scenario,
+  }) => {
+    // Owner link is a /@handle and there is no channel microdata — exactly like the reported page.
+    // The channel is resolved from ytInitialPlayerResponse.videoDetails.channelId instead.
+    scenario.watch[VIDEO_A] = {
+      videoId: VIDEO_A,
+      channelId: 'UCaaaaaaaaaaaaaaaaaaaaaa',
+      channelName: 'Channel A',
+      playerResponseScript: true,
+    };
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    await root.getByRole('tab', { name: 'Presets' }).click();
+    await root.getByRole('button', { name: '+ Add preset' }).click();
+    const channelOption = root.locator('[data-testid="preset-form-scope"] option[value="channel"]');
+    await expect(channelOption).toBeEnabled();
+    // And a channel-scoped preset can actually be saved.
+    await root.locator('[data-testid="preset-form-text"]').fill('channel only preset');
+    await root.locator('[data-testid="preset-form-scope"]').selectOption('channel');
+    await root.locator('[data-testid="preset-form-save"]').click();
+    await expect(
+      root.getByRole('button', { name: 'Insert preset: channel only preset' }),
+    ).toBeVisible();
+  });
+
   test('channel presets only appear on their channel', async ({ page, serviceWorker }) => {
     await seedPresets(serviceWorker, [
       { text: 'global', scope: 'global' },

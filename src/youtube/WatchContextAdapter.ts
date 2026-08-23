@@ -14,10 +14,13 @@ const CHANNEL_HREF = /\/channel\/(UC[\w-]{22})(?:[/?#]|$)/;
  * Resolves video/channel context from the watch page.
  * Channel detection strategies (in order):
  *  A. explicit /channel/UC... link in the owner block (live; updates on SPA navigation)
- *  B. schema.org author microdata channel URL (/channel/UC...)
- *  C. server-rendered <meta itemprop="channelId">
- * B and C are only trusted while the sibling video identifier meta still equals the current URL's
- * video id, since that microdata is not guaranteed to refresh on SPA navigation.
+ *  B. ytInitialPlayerResponse.videoDetails.channelId, read from the inline <script> text
+ *  C. schema.org author microdata channel URL (/channel/UC...)
+ *  D. server-rendered <meta itemprop="channelId">
+ * B–D are only trusted while their own video id still equals the current URL's video id, since that
+ * server-rendered data is not guaranteed to refresh on SPA navigation. On real watch pages the
+ * owner block and author microdata usually carry only a /@handle, so B (the authoritative source
+ * YouTube embeds for the player) is what makes channel features work on a fresh load.
  * Anything else -> null (fail closed; channel features disable themselves).
  */
 export class DomWatchContextAdapter implements WatchContextAdapter {
@@ -42,6 +45,7 @@ export class DomWatchContextAdapter implements WatchContextAdapter {
   detectChannelId(): string | null {
     return (
       this.channelFromOwnerLink() ??
+      this.channelFromPlayerResponse() ??
       this.channelFromAuthorMicrodata() ??
       this.channelFromFreshMeta()
     );
@@ -80,6 +84,29 @@ export class DomWatchContextAdapter implements WatchContextAdapter {
     );
     if (ids.size !== 1) return null;
     return [...ids][0] ?? null;
+  }
+
+  /**
+   * Read videoDetails.channelId from the inline ytInitialPlayerResponse script. This is YouTube's
+   * own authoritative channel id for the current video. We scope to the videoDetails object and
+   * require its videoId to equal the current URL video id, so a stale (SPA-navigated) script is
+   * ignored rather than trusted.
+   */
+  private channelFromPlayerResponse(): string | null {
+    const videoId = this.detectVideoId();
+    if (videoId === null) return null;
+    for (const script of this.doc.querySelectorAll('script')) {
+      const text = script.textContent ?? '';
+      if (!text.includes('ytInitialPlayerResponse') || !text.includes('videoDetails')) continue;
+      const start = text.indexOf('"videoDetails"');
+      if (start < 0) return null;
+      const segment = text.slice(start, start + 5000);
+      const scriptVideoId = /"videoId":"([\w-]{11})"/.exec(segment)?.[1];
+      const scriptChannelId = /"channelId":"(UC[\w-]{22})"/.exec(segment)?.[1];
+      if (scriptVideoId === videoId && isChannelId(scriptChannelId)) return scriptChannelId;
+      return null;
+    }
+    return null;
   }
 
   private channelFromAuthorMicrodata(): string | null {

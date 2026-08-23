@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DomWatchContextAdapter } from '../../../src/youtube/WatchContextAdapter';
-import { renderHeadMeta, renderOwnerBlock, type WatchPageOptions } from '../../fixtures/watchPage';
+import {
+  renderHeadMeta,
+  renderOwnerBlock,
+  renderPlayerResponseScript,
+  type WatchPageOptions,
+} from '../../fixtures/watchPage';
 
 const CH_A = 'UCaaaaaaaaaaaaaaaaaaaaaa';
 const CH_B = 'UCbbbbbbbbbbbbbbbbbbbbbb';
@@ -12,7 +17,7 @@ const mount = (
   href = `https://www.youtube.com/watch?v=${options.videoId}`,
 ) => {
   document.head.innerHTML = renderHeadMeta(options);
-  document.body.innerHTML = `<ytd-app><ytd-watch-flexy><div id="owner">${renderOwnerBlock(options)}</div></ytd-watch-flexy></ytd-app>`;
+  document.body.innerHTML = `${renderPlayerResponseScript(options)}<ytd-app><ytd-watch-flexy><div id="owner">${renderOwnerBlock(options)}</div></ytd-watch-flexy></ytd-app>`;
   return new DomWatchContextAdapter(document, () => new URL(href));
 };
 
@@ -46,6 +51,22 @@ describe('DomWatchContextAdapter.detectChannelId', () => {
         authorChannelUrl: true,
       }).detectChannelId(),
     ).toBe(CH_A);
+  });
+  it('uses ytInitialPlayerResponse.videoDetails.channelId when owner/microdata carry only a handle', () => {
+    // This mirrors real watch pages (e.g. hololive channels): owner link is /@handle, no channel
+    // microdata, but the inline player response carries the authoritative channelId.
+    expect(
+      mount({ videoId: VIDEO_A, channelId: CH_A, playerResponseScript: true }).detectChannelId(),
+    ).toBe(CH_A);
+  });
+  it('rejects a stale player-response script after SPA navigation', () => {
+    const adapter = mount({
+      videoId: VIDEO_B,
+      channelId: CH_A,
+      playerResponseScript: true,
+      staleMetaVideoId: VIDEO_A,
+    });
+    expect(adapter.detectChannelId()).toBeNull();
   });
   it('uses meta[itemprop=channelId] when present and fresh', () => {
     expect(
