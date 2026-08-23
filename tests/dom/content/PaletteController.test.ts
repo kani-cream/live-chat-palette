@@ -215,6 +215,24 @@ describe('PaletteController – presets', () => {
     expect((await t.repo.load()).presets[0]?.text).toBe('Cute!');
     t.controller.dispose();
   });
+  it('keeps the in-progress preset text across an unrelated re-render (no data loss)', async () => {
+    const t = await setup();
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    const textarea = t.q<HTMLTextAreaElement>('[data-testid="preset-form-text"]');
+    if (!textarea) throw new Error('textarea missing');
+    textarea.value = 'half typed message';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    // Force an unrelated re-render (a theme change), like YouTube churn would once have.
+    document.documentElement.setAttribute('dark', '');
+    await t.settle();
+    document.documentElement.removeAttribute('dark');
+    const after = t.q<HTMLTextAreaElement>('[data-testid="preset-form-text"]');
+    expect(after).not.toBe(textarea); // the form was actually re-rendered
+    expect(after?.value).toBe('half typed message');
+    t.controller.dispose();
+  });
+
   it('rejects an empty preset with a visible error', async () => {
     const t = await setup();
     await addPresetViaForm(t, '');

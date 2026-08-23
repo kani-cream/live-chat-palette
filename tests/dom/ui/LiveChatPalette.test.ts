@@ -12,6 +12,7 @@ const handlers = (): PaletteHandlers => ({
   onPresetClick: vi.fn(),
   onOpenPresetForm: vi.fn(),
   onClosePresetForm: vi.fn(),
+  onPresetFormInput: vi.fn(),
   onSubmitPreset: vi.fn(),
   onEmojiClick: vi.fn(),
   onToggleFavorite: vi.fn(),

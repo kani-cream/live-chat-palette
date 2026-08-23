@@ -62,9 +62,6 @@ export const createChatContentScript = (doc: Document, win: Window): MountContro
         logger.error('palette failed to start', error);
       });
       return {
-        refresh: () => {
-          controller.refresh();
-        },
         dispose: () => {
           controller.dispose();
         },

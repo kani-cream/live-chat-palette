@@ -50,6 +50,32 @@ test.describe('preset insertion and sending', () => {
     expect(stored.presets.map((p) => p.text)).toEqual(['Thanks for the stream!']);
   });
 
+  test('keeps the preset form text while chat messages keep streaming in', async ({ page }) => {
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    await root.getByRole('tab', { name: 'Presets' }).click();
+    await root.getByRole('button', { name: '+ Add preset' }).click();
+    const textarea = root.locator('[data-testid="preset-form-text"]');
+    await textarea.fill('a message I am still typing');
+
+    // Simulate an active live chat: many new message nodes arriving while the user types.
+    for (let batch = 0; batch < 5; batch += 1) {
+      await frame.locator('body').evaluate(() => {
+        const items = document.querySelector('#items');
+        for (let i = 0; i < 10; i += 1) {
+          const node = document.createElement('yt-live-chat-text-message-renderer');
+          node.textContent = 'incoming chat message';
+          items?.append(node);
+        }
+      });
+      await page.waitForTimeout(60);
+    }
+
+    // The palette was not rebuilt and the in-progress text is intact.
+    await expect(palette(frame)).toHaveCount(1);
+    await expect(textarea).toHaveValue('a message I am still typing');
+  });
+
   test('normal click inserts only; the draft is not sent', async ({ page, serviceWorker }) => {
     await seedPresets(serviceWorker, [{ text: 'Cute!', scope: 'global' }]);
     const frame = await openWatchPage(page, VIDEO_A);

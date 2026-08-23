@@ -110,11 +110,6 @@ export class PaletteController {
     await this.onContextChange(context);
   }
 
-  /** Re-check adapter availability after YouTube's DOM changed. */
-  refresh(): void {
-    this.render();
-  }
-
   dispose(): void {
     this.disposed = true;
     for (const dispose of this.disposers) dispose();
@@ -153,7 +148,7 @@ export class PaletteController {
     const schema = await this.deps.repo.load();
     if (this.disposed) return;
     this.applySchema(schema, context, { resetEmojis: true });
-    this.setState({ notice: null, presetFormOpen: false });
+    this.setState({ notice: null, presetFormOpen: false, presetFormText: '' });
     if (context.channelId !== undefined) {
       await this.deps.emojis.rememberChannel(context.channelId, context.channelName);
       // Non-intrusive: only read the picker if YouTube already rendered it.
@@ -209,10 +204,15 @@ export class PaletteController {
         this.handlePresetClick(preset, modifiers);
       },
       onOpenPresetForm: () => {
-        this.setState({ presetFormOpen: true });
+        this.setState({ presetFormOpen: true, presetFormText: '' });
       },
       onClosePresetForm: () => {
-        this.setState({ presetFormOpen: false });
+        this.setState({ presetFormOpen: false, presetFormText: '' });
+      },
+      onPresetFormInput: (text) => {
+        // Keep the in-progress text in state WITHOUT re-rendering, so a later re-render (theme,
+        // storage, context) restores it instead of wiping the textarea the user is typing in.
+        this.state = { ...this.state, presetFormText: text };
       },
       onSubmitPreset: (text, scope) => {
         void this.submitPreset(text, scope);
@@ -276,7 +276,7 @@ export class PaletteController {
       this.setState({ notice: noticeFor(result.error) });
       return;
     }
-    this.setState({ presetFormOpen: false, notice: null });
+    this.setState({ presetFormOpen: false, presetFormText: '', notice: null });
   }
 
   private async toggleFavorite(emoji: AvailableEmoji): Promise<void> {

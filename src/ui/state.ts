@@ -30,6 +30,7 @@ export interface PaletteState {
   emojiScan: EmojiScanState;
   notice: Notice | null;
   presetFormOpen: boolean;
+  presetFormText: string;
   busy: boolean;
 }
 
@@ -41,6 +42,7 @@ export interface PaletteHandlers {
   onPresetClick: (preset: MessagePreset, modifiers: ClickModifiers) => void;
   onOpenPresetForm: () => void;
   onClosePresetForm: () => void;
+  onPresetFormInput: (text: string) => void;
   onSubmitPreset: (text: string, scope: PresetScope) => void;
   onEmojiClick: (emoji: EmojiReference, modifiers: ClickModifiers) => void;
   onToggleFavorite: (emoji: AvailableEmoji) => void;
@@ -61,5 +63,6 @@ export const createInitialState = (theme: Theme): PaletteState => ({
   emojiScan: 'idle',
   notice: null,
   presetFormOpen: false,
+  presetFormText: '',
   busy: false,
 });

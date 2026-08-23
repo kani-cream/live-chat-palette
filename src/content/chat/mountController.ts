@@ -5,8 +5,6 @@ import {
 } from '../../youtube/PaletteAnchorAdapter';
 
 export interface MountedPalette {
-  /** Called when YouTube's DOM around the palette changed (re-evaluate adapters). */
-  refresh: () => void;
   dispose: () => void;
 }
 
@@ -23,7 +21,12 @@ export const DEFAULT_MOUNT_DEBOUNCE_MS = 200;
  * Owns the palette host element lifecycle:
  * - mounts once before YouTube's message input (guarded by a root attribute)
  * - unmounts when the anchor disappears, remounts when it comes back
- * - reacts to DOM reconstruction through one debounced, childList-only observer
+ * - reacts to DOM reconstruction through one debounced observer
+ *
+ * It deliberately does NOT re-render the palette on ordinary chat DOM churn (new chat messages
+ * mutate the DOM many times per second). While the host stays connected, the mounted palette is
+ * left untouched, so an in-progress preset form or the native chat draft is never rebuilt out from
+ * under the user. Content updates come from the palette's own storage/context/theme subscriptions.
  */
 export class MountController {
   private readonly debounceMs: number;
@@ -59,17 +62,16 @@ export class MountController {
     return this.host?.isConnected ?? false;
   }
 
-  /** Debounced re-evaluation; exposed for tests and manual triggers. */
+  /** Mount/unmount re-evaluation; exposed for tests and manual triggers. Never re-renders. */
   evaluate(): void {
     const anchor = this.options.anchor.findAnchor();
     if (!anchor) {
       this.unmount();
       return;
     }
-    if (this.host?.isConnected) {
-      this.mounted?.refresh();
-      return;
-    }
+    // Already mounted and still connected: leave the palette exactly as it is. This is the common
+    // case on every chat-message mutation, and re-rendering here would wipe an open preset form.
+    if (this.host?.isConnected) return;
     if (this.host && !this.host.isConnected) this.unmount();
     const existing = this.options.doc.querySelector(`[${MOUNT_ROOT_ATTRIBUTE}]`);
     if (existing) {

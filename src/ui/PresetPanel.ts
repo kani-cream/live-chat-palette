@@ -13,6 +13,13 @@ const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLE
       'aria-label': STRINGS.presetTextLabel,
     },
     dataset: { focusKey: 'preset-form-text', testid: 'preset-form-text' },
+    // Seed from state so an unrelated re-render restores what the user was typing.
+    props: { value: state.presetFormText },
+    on: {
+      input: () => {
+        handlers.onPresetFormInput(textarea.value);
+      },
+    },
   });
   const channelKnown = state.context.channelId !== undefined;
   const select = h(

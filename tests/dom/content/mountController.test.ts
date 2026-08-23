@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { MountController } from '../../../src/content/chat/mountController';
 import {
   DomPaletteAnchorAdapter,
@@ -11,7 +11,6 @@ const tick = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 const setup = () => {
   const created: HTMLElement[] = [];
   const disposed: HTMLElement[] = [];
-  const refresh = vi.fn();
   const controller = new MountController({
     doc: document,
     anchor: new DomPaletteAnchorAdapter(document),
@@ -19,14 +18,13 @@ const setup = () => {
     createPalette: (host) => {
       created.push(host);
       return {
-        refresh,
         dispose: () => {
           disposed.push(host);
         },
       };
     },
   });
-  return { controller, created, disposed, refresh };
+  return { controller, created, disposed };
 };
 
 const roots = () => document.querySelectorAll(`[${MOUNT_ROOT_ATTRIBUTE}]`);
@@ -81,14 +79,20 @@ describe('MountController', () => {
     expect(disposed).toHaveLength(2);
     controller.stop();
   });
-  it('asks the palette to refresh on unrelated mutations instead of remounting', async () => {
+  it('leaves the mounted palette untouched on unrelated chat mutations (no remount, no dispose)', async () => {
     mountLiveChat();
-    const { controller, created, refresh } = setup();
+    const { controller, created, disposed } = setup();
     controller.start();
-    document.querySelector('#items')?.append(document.createElement('div'));
+    const host = roots()[0];
+    // Simulate a burst of incoming chat messages.
+    for (let i = 0; i < 20; i += 1) {
+      document.querySelector('#items')?.append(document.createElement('div'));
+    }
     await tick();
-    expect(refresh).toHaveBeenCalled();
     expect(created).toHaveLength(1);
+    expect(disposed).toHaveLength(0);
+    // The exact same host element is still mounted — it was never rebuilt.
+    expect(roots()[0]).toBe(host);
     controller.stop();
   });
   it('stop() unmounts and disposes', () => {
