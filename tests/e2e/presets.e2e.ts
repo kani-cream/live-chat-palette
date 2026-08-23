@@ -104,6 +104,21 @@ test.describe('preset insertion and sending', () => {
     await expect(textarea).toHaveValue('a message I am still typing');
   });
 
+  test('composes a multi-emoji preset by inserting each shortcode separately', async ({
+    page,
+    serviceWorker,
+  }) => {
+    await seedPresets(serviceWorker, [{ text: 'おつ :_wave::_heart:', scope: 'global' }]);
+    const frame = await openWatchPage(page, VIDEO_A);
+    await palette(frame)
+      .getByRole('button', { name: 'Insert preset: おつ :_wave::_heart:' })
+      .click();
+    // The fixture input does not convert shortcodes, but every segment is inserted (no data lost),
+    // proving the token-by-token composition path runs instead of a single bulk insert.
+    await expect.poll(async () => (await harnessState(frame)).input).toBe('おつ :_wave::_heart:');
+    expect((await harnessState(frame)).sent).toEqual([]);
+  });
+
   test('normal click inserts only; the draft is not sent', async ({ page, serviceWorker }) => {
     await seedPresets(serviceWorker, [{ text: 'Cute!', scope: 'global' }]);
     const frame = await openWatchPage(page, VIDEO_A);

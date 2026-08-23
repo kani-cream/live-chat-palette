@@ -10,6 +10,7 @@ const REF = { channelId: CH_A, familyName: 'Members', emojiName: ':_wave:' };
 
 interface Options {
   insertResult?: Result<void>;
+  chunkResult?: Result<void>;
   sendEnabled?: boolean;
   sendResult?: Result<void>;
   emojiResult?: Result<void>;
@@ -23,6 +24,11 @@ const setup = (options: Options = {}) => {
     readDraft: () => draft,
     insertText: vi.fn((text: string) => {
       const result = options.insertResult ?? okVoid();
+      if (result.ok) draft += text;
+      return result;
+    }),
+    insertChunk: vi.fn((text: string) => {
+      const result = options.chunkResult ?? okVoid();
       if (result.ok) draft += text;
       return result;
     }),
@@ -43,67 +49,100 @@ const setup = (options: Options = {}) => {
   };
   const service = new ChatActionService(chatInput, sendButton, emojiPicker, {
     sendLockMs: 800,
+    chunkDelayMs: 0,
+    sleep: () => Promise.resolve(),
     ...(options.clock ? { clock: options.clock } : {}),
   });
   return { service, chatInput, sendButton, emojiPicker, draft: () => draft };
 };
 
 describe('ChatActionService.insertPreset', () => {
-  it('inserts without sending', () => {
-    const { service, sendButton, draft } = setup();
-    expect(service.insertPreset('hi').ok).toBe(true);
+  it('inserts plain text without sending, as one strict insertion', async () => {
+    const { service, chatInput, sendButton, draft } = setup();
+    expect((await service.insertPreset('hi')).ok).toBe(true);
     expect(draft()).toBe('hi');
+    expect(chatInput.insertText).toHaveBeenCalledTimes(1);
+    expect(chatInput.insertChunk).not.toHaveBeenCalled();
     expect(sendButton.send).not.toHaveBeenCalled();
+  });
+
+  it('inserts an emoji preset segment-by-segment so YouTube converts each shortcode', async () => {
+    const { service, chatInput } = setup();
+    const result = await service.insertPreset('おつ :_wave::_heart:');
+    expect(result.ok).toBe(true);
+    // Text and each shortcode become separate insertChunk calls; insertText is not used.
+    expect(chatInput.insertText).not.toHaveBeenCalled();
+    const chunks = (chatInput.insertChunk as ReturnType<typeof vi.fn>).mock.calls.map((c) =>
+      String(c[0]),
+    );
+    expect(chunks).toEqual(['おつ ', ':_wave:', ':_heart:']);
+  });
+
+  it('stops and reports if a segment fails to insert', async () => {
+    const { service, chatInput } = setup({ chunkResult: err('INSERT_UNCONFIRMED', 'x') });
+    const result = await service.insertPreset(':_wave::_heart:');
+    expect(result.ok).toBe(false);
+    // Failed on the first chunk; did not continue.
+    expect((chatInput.insertChunk as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
   });
 });
 
 describe('ChatActionService.insertAndSendPreset', () => {
-  it('inserts then sends exactly once when send is enabled', () => {
+  it('inserts then sends exactly once when send is enabled', async () => {
     const { service, sendButton } = setup();
-    expect(service.insertAndSendPreset('hi').ok).toBe(true);
+    expect((await service.insertAndSendPreset('hi')).ok).toBe(true);
     expect(sendButton.send).toHaveBeenCalledTimes(1);
   });
-  it('does not send when insertion fails (draft untouched by us)', () => {
+  it('sends an emoji preset once after composing all shortcodes', async () => {
+    const { service, sendButton, chatInput } = setup();
+    expect((await service.insertAndSendPreset(':_wave::_heart:')).ok).toBe(true);
+    expect((chatInput.insertChunk as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
+    expect(sendButton.send).toHaveBeenCalledTimes(1);
+  });
+  it('does not send when insertion fails (draft untouched by us)', async () => {
     const { service, sendButton, draft } = setup({ insertResult: err('INSERT_UNCONFIRMED', 'x') });
-    const result = service.insertAndSendPreset('hi');
+    const result = await service.insertAndSendPreset('hi');
     expect(result.ok).toBe(false);
     expect(sendButton.send).not.toHaveBeenCalled();
     expect(draft()).toBe('');
   });
-  it('does not send when the native send is disabled, and keeps the inserted draft', () => {
+  it('does not send when the native send is disabled, and keeps the inserted draft', async () => {
     const { service, sendButton, draft } = setup({ sendEnabled: false });
-    const result = service.insertAndSendPreset('hi');
+    const result = await service.insertAndSendPreset('hi');
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('SEND_DISABLED');
     expect(sendButton.send).not.toHaveBeenCalled();
     expect(draft()).toBe('hi');
   });
-  it('reports a failed send without retrying and without clearing the draft', () => {
+  it('reports a failed send without retrying and without clearing the draft', async () => {
     const { service, sendButton, draft } = setup({ sendResult: err('SEND_BUTTON_NOT_FOUND', 'x') });
-    const result = service.insertAndSendPreset('hi');
+    const result = await service.insertAndSendPreset('hi');
     expect(result.ok).toBe(false);
     expect(sendButton.send).toHaveBeenCalledTimes(1);
     expect(draft()).toBe('hi');
   });
-  it('locks out a second send for 800 ms (double-activation guard), then allows again', () => {
+  it('locks out a second send for 800 ms (double-activation guard), then allows again', async () => {
     let now = 1000;
     const { service, sendButton } = setup({ clock: () => now });
-    expect(service.insertAndSendPreset('a').ok).toBe(true);
-    const second = service.insertAndSendPreset('b');
+    expect((await service.insertAndSendPreset('a')).ok).toBe(true);
+    const second = await service.insertAndSendPreset('b');
     expect(second.ok).toBe(false);
     if (!second.ok) expect(second.error.code).toBe('SEND_LOCKED');
     expect(sendButton.send).toHaveBeenCalledTimes(1);
     now += 799;
-    expect(service.insertAndSendPreset('c').ok).toBe(false);
+    expect((await service.insertAndSendPreset('c')).ok).toBe(false);
     now += 1;
-    expect(service.insertAndSendPreset('d').ok).toBe(true);
+    expect((await service.insertAndSendPreset('d')).ok).toBe(true);
     expect(sendButton.send).toHaveBeenCalledTimes(2);
   });
-  it('does not insert while locked (no stray text on double click)', () => {
+  it('does not start a second insertion while one is in progress', async () => {
     const { service, chatInput } = setup({ clock: () => 5 });
-    service.insertAndSendPreset('a');
-    service.insertAndSendPreset('b');
+    const first = service.insertAndSendPreset('a');
+    const second = service.insertAndSendPreset('b');
+    await Promise.all([first, second]);
+    // Only the first ran; the second was rejected as busy before inserting anything.
     expect(chatInput.insertText).toHaveBeenCalledTimes(1);
+    expect((await second).ok).toBe(false);
   });
 });
 

@@ -41,7 +41,11 @@ const setup = async (options: SetupOptions = {}) => {
     pollIntervalMs: 5,
   });
   let now = 1000;
-  const actions = new ChatActionService(chatInput, sendButton, emojiPicker, { clock: () => now });
+  const actions = new ChatActionService(chatInput, sendButton, emojiPicker, {
+    clock: () => now,
+    chunkDelayMs: 0,
+    sleep: () => Promise.resolve(),
+  });
   const contextListeners = new Set<(c: VideoContext) => void>();
   const contextService = new ContextService({
     request: () =>
@@ -282,17 +286,35 @@ describe('PaletteController – presets', () => {
     expect(t.qa('[data-testid="preset-emoji-option"]')).toHaveLength(0);
     t.controller.dispose();
   });
+  it('composes a multi-emoji preset segment-by-segment without a false insert error', async () => {
+    const area = new FakeStorageArea();
+    await new PresetService(new StorageRepository(area)).add({
+      text: 'おつ :_wave::_heart:',
+      scope: 'global',
+    });
+    const t = await setup({ area });
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('.lcp-preset-chip'));
+    await t.settle();
+    // All three segments were inserted (the harness does not convert shortcodes, but each stuck).
+    expect(t.harness.readInput()).toBe('おつ :_wave::_heart:');
+    expect(t.q('.lcp-notice[data-kind="error"]')).toBeNull();
+    t.controller.dispose();
+  });
   it('normal click inserts only; Cmd/Ctrl+Click inserts and sends once', async () => {
     const t = await setup();
     await addPresetViaForm(t, 'Hello');
     t.click(t.q('.lcp-preset-chip'));
+    await t.settle();
     expect(t.harness.readInput()).toBe('Hello');
     expect(t.harness.state.sent).toEqual([]);
     t.click(t.q('.lcp-preset-chip'), { metaKey: true });
+    await t.settle();
     expect(t.harness.state.sent).toEqual(['HelloHello']);
     expect(t.harness.readInput()).toBe('');
     t.advance(1000);
     t.click(t.q('.lcp-preset-chip'), { ctrlKey: true });
+    await t.settle();
     expect(t.harness.state.sent).toEqual(['HelloHello', 'Hello']);
     t.controller.dispose();
   });
@@ -303,6 +325,7 @@ describe('PaletteController – presets', () => {
     await t.settle();
     expect(t.q('.lcp-hint')?.textContent).toContain('Instant send is on');
     t.click(t.q('.lcp-preset-chip'));
+    await t.settle();
     expect(t.harness.state.sent).toEqual(['Hi']);
     t.controller.dispose();
   });
@@ -310,12 +333,15 @@ describe('PaletteController – presets', () => {
     const t = await setup();
     await addPresetViaForm(t, 'Hi');
     t.click(t.q('.lcp-preset-chip'), { metaKey: true });
+    await t.settle();
     t.click(t.q('.lcp-preset-chip'), { metaKey: true });
+    await t.settle();
     expect(t.harness.state.sent).toEqual(['Hi']);
     expect(t.harness.readInput()).toBe('');
     expect(t.q('.lcp-notice')?.textContent).toContain('wait a moment');
     t.advance(800);
     t.click(t.q('.lcp-preset-chip'), { metaKey: true });
+    await t.settle();
     expect(t.harness.state.sent).toEqual(['Hi', 'Hi']);
     t.controller.dispose();
   });
@@ -323,6 +349,7 @@ describe('PaletteController – presets', () => {
     const t = await setup({ fixture: { withoutSendButton: true } });
     await addPresetViaForm(t, 'Hi');
     t.click(t.q('.lcp-preset-chip'), { metaKey: true });
+    await t.settle();
     expect(t.harness.readInput()).toBe('Hi');
     expect(t.harness.state.sent).toEqual([]);
     expect(t.q('.lcp-notice[data-kind="error"]')?.textContent).toContain('could not be sent');
@@ -348,6 +375,7 @@ describe('PaletteController – presets', () => {
     await addPresetViaForm(t, 'amazing');
     t.harness.select(8, 13);
     t.click(t.q('.lcp-preset-chip'));
+    await t.settle();
     expect(t.harness.readInput()).toBe('This is amazing today');
     t.controller.dispose();
   });

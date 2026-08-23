@@ -174,6 +174,33 @@ describe('DomChatInputAdapter.insertText', () => {
     expect(harness.readInput()).toBe('aXb');
   });
 
+  it('insertChunk appends at the caret and confirms only that the editor changed', () => {
+    const harness = mountLiveChat({ initialDraft: 'ab' });
+    harness.select(1);
+    expect(adapter().insertChunk(':_wave:').ok).toBe(true);
+    expect(harness.readInput()).toBe('a:_wave:b');
+    // The caret is left after the inserted chunk, so the next chunk continues in place.
+    expect(adapter().insertChunk(':_heart:').ok).toBe(true);
+    expect(harness.readInput()).toBe('a:_wave::_heart:b');
+  });
+  it('insertChunk fails closed when the input is missing', () => {
+    mountLiveChat({ withoutInput: true });
+    const result = adapter().insertChunk('x');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('INPUT_NOT_FOUND');
+  });
+  it('insertChunk reports failure when the editor does not change', () => {
+    const harness = mountLiveChat();
+    const input = adapter().findInput();
+    // Simulate YouTube reverting the insertion (nothing sticks).
+    input?.addEventListener('input', () => {
+      input.replaceChildren();
+    });
+    const result = adapter().insertChunk('x');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('INSERT_UNCONFIRMED');
+    expect(harness.readInput()).toBe('');
+  });
   it('dispatches an input event so YouTube can update its own state', () => {
     mountLiveChat();
     const input = adapter().findInput();

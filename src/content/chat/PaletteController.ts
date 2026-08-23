@@ -201,7 +201,7 @@ export class PaletteController {
         this.setState({ notice: null });
       },
       onPresetClick: (preset, modifiers) => {
-        this.handlePresetClick(preset, modifiers);
+        void this.handlePresetClick(preset, modifiers);
       },
       onOpenPresetForm: () => {
         this.setState({ presetFormOpen: true, presetFormText: '' });
@@ -232,18 +232,20 @@ export class PaletteController {
     };
   }
 
-  private handlePresetClick(preset: MessagePreset, modifiers: ClickModifiers): void {
+  private async handlePresetClick(preset: MessagePreset, modifiers: ClickModifiers): Promise<void> {
     const action = resolvePresetClick(modifiers, this.state.presetInstantSend);
+    this.setState({ busy: true });
     const result =
       action === 'insert-and-send'
-        ? this.deps.actions.insertAndSendPreset(preset.text)
-        : this.deps.actions.insertPreset(preset.text);
+        ? await this.deps.actions.insertAndSendPreset(preset.text)
+        : await this.deps.actions.insertPreset(preset.text);
+    if (this.disposed) return;
     if (!result.ok) {
       logger.debug('preset action failed', result.error.code);
-      this.setState({ notice: noticeFor(result.error) });
+      this.setState({ busy: false, notice: noticeFor(result.error) });
       return;
     }
-    this.setState({ notice: null });
+    this.setState({ busy: false, notice: null });
   }
 
   private async handleEmojiClick(emoji: EmojiReference, modifiers: ClickModifiers): Promise<void> {

@@ -5,7 +5,14 @@ import { CHAT_SELECTORS } from './selectors';
 export interface ChatInputAdapter {
   findInput(): HTMLElement | null;
   readDraft(): string;
+  /** Strict insertion at the caret with exact verification (used for plain text). */
   insertText(text: string): Result<void>;
+  /**
+   * Insert one segment at the caret, verifying only that the editor changed (not an exact match).
+   * Needed when composing a preset piece-by-piece: YouTube converts `:_shortcode:` segments into
+   * emoji images, so the resulting content deliberately differs from the literal text inserted.
+   */
+  insertChunk(text: string): Result<void>;
 }
 
 /** Serialize editor content to plain text; inline emoji images become their alt/shortcode. */
@@ -91,6 +98,42 @@ export class DomChatInputAdapter implements ChatInputAdapter {
     );
 
     if (serializeEditorContent(input) !== expected) {
+      return err('INSERT_UNCONFIRMED', 'Inserted text could not be confirmed in the editor.');
+    }
+    return okVoid();
+  }
+
+  insertChunk(text: string): Result<void> {
+    const input = this.findInput();
+    if (!input) return err('INPUT_NOT_FOUND', 'Chat input not found.');
+    const doc = input.ownerDocument;
+    const selection = doc.getSelection();
+    if (!selection) return err('NO_SELECTION_API', 'Selection API unavailable.');
+
+    const range = (
+      this.currentRangeWithin(input, selection) ?? this.rangeAtEnd(input)
+    ).cloneRange();
+    input.focus();
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const before = serializeEditorContent(input);
+    if (this.tryNativeInsert(doc, text) && serializeEditorContent(input) !== before) {
+      return okVoid();
+    }
+
+    range.deleteContents();
+    const textNode = doc.createTextNode(text);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    input.dispatchEvent(
+      new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }),
+    );
+
+    if (serializeEditorContent(input) === before) {
       return err('INSERT_UNCONFIRMED', 'Inserted text could not be confirmed in the editor.');
     }
     return okVoid();
