@@ -78,6 +78,27 @@ describe('sanitizeSchema', () => {
     expect(Object.keys(schema.channels)).toEqual([CH_A]);
     expect(schema.channels[CH_A]).toEqual({ channelId: CH_A, channelName: 'A', lastSeenAt: 5 });
   });
+  it('defaults and sanitizes the emoji catalog', () => {
+    expect(createDefaultSchema().emojiCatalog).toEqual({});
+    expect(sanitizeSchema({}).emojiCatalog).toEqual({});
+    const valid = {
+      id: 'c1',
+      channelId: CH_A,
+      familyName: 'm',
+      emojiName: ':_a:',
+      displayName: 'a',
+      lastSeenAt: 1,
+    };
+    const schema = sanitizeSchema({
+      emojiCatalog: {
+        [CH_A]: [valid, { id: 'bad' }],
+        [CH_A + 'x']: [valid], // key not a valid channel id -> dropped
+        nope: 'not an array',
+      },
+    });
+    expect(Object.keys(schema.emojiCatalog)).toEqual([CH_A]);
+    expect(schema.emojiCatalog[CH_A]?.map((e) => e.id)).toEqual(['c1']);
+  });
   it('always stamps the current schema version', () => {
     expect(sanitizeSchema({ schemaVersion: 99 }).schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   });

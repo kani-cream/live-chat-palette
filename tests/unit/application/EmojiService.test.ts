@@ -84,6 +84,19 @@ describe('EmojiService', () => {
     expect((await service.favoritesFor(CH_A)).map((f) => f.emojiName)).toEqual([':_b:', ':_a:']);
   });
 
+  it('caches scanned emojis per channel and returns them from catalogFor', async () => {
+    const { service } = setup();
+    await service.recordScan([emoji(), emoji({ channelId: CH_B, emojiName: ':_b:' })]);
+    expect((await service.catalogFor(CH_A)).map((e) => e.emojiName)).toEqual([':_wave:']);
+    expect((await service.catalogFor(CH_B)).map((e) => e.emojiName)).toEqual([':_b:']);
+    expect(await service.catalogFor(undefined)).toEqual([]);
+    // A later scan upserts (updates metadata, no duplicates).
+    await service.recordScan([emoji({ imageUrl: 'https://img.example/v2.png' })]);
+    const catalog = await service.catalogFor(CH_A);
+    expect(catalog).toHaveLength(1);
+    expect(catalog[0]?.imageUrl).toBe('https://img.example/v2.png');
+  });
+
   it('remembers channels with names, keeping an existing name when none is given', async () => {
     const { service, repo } = setup();
     await service.rememberChannel(CH_A, 'Channel A');

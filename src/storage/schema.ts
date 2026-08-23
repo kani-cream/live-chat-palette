@@ -24,6 +24,12 @@ export interface StorageSchema {
   presets: MessagePreset[];
   favoriteEmojis: EmojiReference[];
   channels: Record<string, KnownChannel>;
+  /**
+   * Cache of custom emojis discovered per channel (keyed by channelId). Lets the palette render
+   * favorites and preset shortcodes as images on load without re-opening YouTube's picker; entries
+   * are display metadata only and are re-resolved live before any actual insertion.
+   */
+  emojiCatalog: Record<string, EmojiReference[]>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -38,6 +44,7 @@ export const createDefaultSchema = (): StorageSchema => ({
   presets: [],
   favoriteEmojis: [],
   channels: {},
+  emojiCatalog: {},
 });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -56,6 +63,16 @@ const sanitizeSettings = (value: unknown): Settings => {
         ? v.lastSelectedTab
         : DEFAULT_SETTINGS.lastSelectedTab,
   };
+};
+
+const sanitizeEmojiCatalog = (value: unknown): Record<string, EmojiReference[]> => {
+  if (!isRecord(value)) return {};
+  const entries = Object.entries(value).flatMap(([key, raw]): [string, EmojiReference[]][] => {
+    if (!isChannelId(key) || !Array.isArray(raw)) return [];
+    const emojis = dedupeById(raw.filter(isEmojiReference).filter((e) => e.channelId === key));
+    return emojis.length > 0 ? [[key, emojis]] : [];
+  });
+  return Object.fromEntries(entries);
 };
 
 const sanitizeChannels = (value: unknown): Record<string, KnownChannel> => {
@@ -89,6 +106,7 @@ export const sanitizeSchema = (value: unknown): StorageSchema => {
     presets: normalizeOrders(dedupeById(presets)),
     favoriteEmojis: dedupeById(favoriteEmojis),
     channels: sanitizeChannels(v.channels),
+    emojiCatalog: sanitizeEmojiCatalog(v.emojiCatalog),
   };
 };
 

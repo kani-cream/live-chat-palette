@@ -1,4 +1,4 @@
-import { emojiIdentityKey, isFavorite, sameEmoji } from '../domain/emoji';
+import { emojiIdentityKey, isFavorite } from '../domain/emoji';
 import type { AvailableEmoji, EmojiReference } from '../domain/emoji';
 import { h } from './dom';
 import { renderEmptyState } from './EmptyState';
@@ -12,18 +12,17 @@ const renderEmojiImage = (emoji: { imageUrl?: string; displayName: string }): HT
       })
     : h('span', { className: 'lcp-emoji-fallback', text: emoji.displayName });
 
-const isResolvable = (state: PaletteState, favorite: EmojiReference): boolean =>
-  state.availableEmojis.some((a) => sameEmoji(a, favorite));
-
+/**
+ * Favorites are always shown as usable images (from their cached metadata). We do not pre-mark them
+ * unavailable: a passive scan can't reliably tell (YouTube's picker virtualizes), so instead the
+ * emoji is re-resolved against the live picker on click and fails closed there if truly gone.
+ */
 const renderFavorite = (
   state: PaletteState,
   handlers: PaletteHandlers,
   favorite: EmojiReference,
 ): HTMLElement => {
-  const unavailable = state.emojiScan === 'scanned' && !isResolvable(state, favorite);
-  const label = unavailable
-    ? `${STRINGS.insertEmoji(favorite.displayName)} (${STRINGS.emojiUnavailableBadge})`
-    : STRINGS.insertEmoji(favorite.displayName);
+  const label = STRINGS.insertEmoji(favorite.displayName);
   return h(
     'li',
     { className: 'lcp-emoji-item' },
@@ -35,10 +34,9 @@ const renderFavorite = (
         dataset: {
           emojiKey: emojiIdentityKey(favorite),
           focusKey: `fav:${emojiIdentityKey(favorite)}`,
-          unavailable: String(unavailable),
           testid: 'favorite-emoji',
         },
-        props: { disabled: unavailable || !state.chatInputAvailable || state.busy },
+        props: { disabled: !state.chatInputAvailable || state.busy },
         on: {
           // Keep focus/caret inside YouTube's input; the click still fires.
           mousedown: (event) => {
@@ -51,12 +49,6 @@ const renderFavorite = (
       },
       renderEmojiImage(favorite),
     ),
-    unavailable &&
-      h('span', {
-        className: 'lcp-emoji-badge',
-        text: '🔒',
-        attrs: { 'aria-hidden': 'true' },
-      }),
     h('button', {
       className: 'lcp-star',
       text: '★',

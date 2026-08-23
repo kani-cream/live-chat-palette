@@ -151,8 +151,10 @@ export class PaletteController {
     this.setState({ notice: null, presetFormOpen: false, presetFormText: '' });
     if (context.channelId !== undefined) {
       await this.deps.emojis.rememberChannel(context.channelId, context.channelName);
-      // Non-intrusive: only read the picker if YouTube already rendered it.
-      if (this.deps.emojiPicker.isPickerRendered()) await this.scanEmojis({ mayOpenPicker: false });
+      // Show cached emojis immediately (no intrusive picker open); a live Refresh updates the cache.
+      const cached = await this.deps.emojis.catalogFor(context.channelId);
+      if (this.disposed || this.state.context.channelId !== context.channelId) return;
+      this.setState({ availableEmojis: cached });
     }
   }
 
@@ -176,8 +178,13 @@ export class PaletteController {
         return;
       }
       await this.deps.emojis.recordScan(scanned.value);
+      // Show the accumulated catalog (a partial live scan must not shrink what we already cached).
+      const catalog = await this.deps.emojis.catalogFor(channelId);
       if (this.disposed || this.state.context.channelId !== channelId) return;
-      this.setState({ availableEmojis: scanned.value, emojiScan: 'scanned' });
+      this.setState({
+        availableEmojis: catalog.length > 0 ? catalog : scanned.value,
+        emojiScan: 'scanned',
+      });
     } finally {
       if (openedByUs) await this.deps.emojiPicker.closePicker();
     }

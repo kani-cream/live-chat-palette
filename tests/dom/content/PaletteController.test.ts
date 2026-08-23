@@ -438,16 +438,34 @@ describe('PaletteController – emojis', () => {
     expect(t.harness.state.pickerOpens).toBe(1);
     t.controller.dispose();
   });
-  it('auto-scans on load only when the picker is already rendered', async () => {
-    const t = await setup({
-      fixture: {
-        pickerPreRendered: true,
-        pickerHidden: true,
-        harness: { categories: EMOJI_CATEGORIES },
+  it('renders cached emojis and preset shortcode images on load without opening the picker', async () => {
+    const area = new FakeStorageArea();
+    const repo = new StorageRepository(area);
+    await new PresetService(repo).add({ text: 'おつ :_wave:', scope: 'global' });
+    await repo.update((s) => ({
+      ...s,
+      emojiCatalog: {
+        [CH_A]: [
+          {
+            id: 'c1',
+            channelId: CH_A,
+            familyName: 'Channel A members',
+            emojiName: ':_wave:',
+            displayName: 'wave',
+            imageUrl: 'https://img.example/a/wave.png',
+            lastSeenAt: 1,
+          },
+        ],
       },
-    });
-    expect(t.qa('[data-testid="available-emoji"]')).toHaveLength(3);
+    }));
+    const t = await setup({ area });
+    // No live scan on load — the palette never opened the native picker.
     expect(t.harness.state.pickerOpens).toBe(0);
+    // The cached catalog is shown as available emojis, and the preset chip renders its image.
+    expect(t.qa('[data-testid="available-emoji"]').length).toBeGreaterThan(0);
+    t.click(t.q('[data-testid="tab-preset"]'));
+    const chip = t.q('.lcp-preset-chip');
+    expect(chip?.querySelector('img.lcp-inline-emoji')).not.toBeNull();
     t.controller.dispose();
   });
   it('favorites and unfavorites emojis; favorite click inserts only (even with Cmd/Ctrl)', async () => {
@@ -472,7 +490,7 @@ describe('PaletteController – emojis', () => {
     expect((await t.repo.load()).favoriteEmojis).toEqual([]);
     t.controller.dispose();
   });
-  it('disables favorites that are no longer available and fails closed on click', async () => {
+  it('shows favorites as usable and fails closed on click when the emoji is gone', async () => {
     const area = new FakeStorageArea();
     await new EmojiService(new StorageRepository(area)).addFavorite({
       channelId: CH_A,
@@ -488,10 +506,14 @@ describe('PaletteController – emojis', () => {
         harness: { categories: EMOJI_CATEGORIES },
       },
     });
+    // No passive "unavailable" marking: the favorite is shown as a usable image...
     const button = t.q<HTMLButtonElement>('[data-testid="favorite-emoji"]');
-    expect(button?.disabled).toBe(true);
-    expect(button?.dataset.unavailable).toBe('true');
-    expect(button?.getAttribute('aria-label')).toContain('Currently unavailable');
+    expect(button?.disabled).toBe(false);
+    expect(button?.dataset.unavailable).toBeUndefined();
+    // ...but clicking it re-resolves against the live picker and fails closed (no fabricated image).
+    t.click(button);
+    await t.settle(50);
+    expect(t.q('.lcp-notice[data-kind="error"]')?.textContent).toContain('not currently available');
     expect(t.harness.readInput()).toBe('');
     t.controller.dispose();
   });

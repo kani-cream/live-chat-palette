@@ -116,7 +116,7 @@ test.describe('custom emoji favorites', () => {
     await expect.poll(async () => (await harnessState(frame)).input).toBe(':_wave::_heart:');
   });
 
-  test('unavailable favorite is disabled and fails closed (no fabricated image)', async ({
+  test('a gone favorite stays usable in the UI but fails closed on click (no fabricated image)', async ({
     page,
     serviceWorker,
   }) => {
@@ -131,6 +131,7 @@ test.describe('custom emoji favorites', () => {
           familyName: 'Channel A members',
           emojiName: ':_gone:',
           displayName: ':_gone:',
+          imageUrl: 'https://img.example/a/gone.png',
           lastSeenAt: 0,
         },
       ],
@@ -138,10 +139,14 @@ test.describe('custom emoji favorites', () => {
     });
     const frame = await openWatchPage(page, VIDEO_A);
     const root = palette(frame);
-    await root.getByRole('button', { name: 'Refresh emojis' }).click();
     const favorite = root.locator('[data-testid="favorite-emoji"]');
-    await expect(favorite).toBeDisabled();
-    await expect(favorite).toHaveAttribute('aria-label', /Currently unavailable/);
+    // Shown as a usable image on load (from cached metadata), not pre-marked unavailable.
+    await expect(favorite).toBeEnabled();
+    // Clicking re-resolves against the live picker and fails closed since it is not there.
+    await favorite.click();
+    await expect(root.locator('.lcp-notice[data-kind="error"]')).toContainText(
+      'not currently available',
+    );
     expect((await harnessState(frame)).input).toBe('');
   });
 

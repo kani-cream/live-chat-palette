@@ -1,4 +1,5 @@
 import type { VideoContext } from '../domain/context';
+import { emojiIdentityKey } from '../domain/emoji';
 import type { AvailableEmoji, EmojiIdentity, EmojiReference } from '../domain/emoji';
 import type { MessagePreset, PresetScope } from '../domain/preset';
 import type { PaletteTab } from '../storage/schema';
@@ -66,3 +67,15 @@ export const createInitialState = (theme: Theme): PaletteState => ({
   presetFormText: '',
   busy: false,
 });
+
+/**
+ * Emojis usable for rendering shortcodes as images: the cached/scanned catalog plus favorites
+ * (favorites carry their own cached image, so preset shortcodes render even before any live scan).
+ */
+export const renderableEmojis = (state: PaletteState): AvailableEmoji[] => {
+  const byIdentity = new Map<string, AvailableEmoji>();
+  for (const emoji of [...state.availableEmojis, ...state.favorites]) {
+    byIdentity.set(emojiIdentityKey(emoji), emoji);
+  }
+  return [...byIdentity.values()];
+};

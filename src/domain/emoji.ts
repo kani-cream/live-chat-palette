@@ -112,6 +112,43 @@ export const favoritesForChannel = (
 ): EmojiReference[] =>
   channelId === undefined ? [] : favorites.filter((f) => f.channelId === channelId);
 
+export const DEFAULT_CATALOG_CAP = 300;
+
+/**
+ * Upsert freshly discovered emojis into a per-channel catalog (cache), keeping at most `cap`
+ * entries by most-recently-seen. Existing entries keep their id and get refreshed metadata.
+ */
+export const upsertEmojiCatalog = (
+  existing: readonly EmojiReference[],
+  available: readonly AvailableEmoji[],
+  newId: () => string,
+  now: number,
+  cap: number = DEFAULT_CATALOG_CAP,
+): EmojiReference[] => {
+  let catalog = [...existing];
+  for (const emoji of available) {
+    const index = catalog.findIndex((e) => sameEmoji(e, emoji));
+    if (index >= 0) {
+      const current = catalog[index];
+      if (current) catalog[index] = refreshFavorite(current, emoji, now);
+    } else {
+      catalog.push({
+        id: newId(),
+        channelId: emoji.channelId,
+        familyName: emoji.familyName,
+        emojiName: emoji.emojiName,
+        displayName: emoji.displayName,
+        lastSeenAt: now,
+        ...(emoji.imageUrl !== undefined ? { imageUrl: emoji.imageUrl } : {}),
+      });
+    }
+  }
+  if (catalog.length > cap) {
+    catalog = [...catalog].sort((a, b) => b.lastSeenAt - a.lastSeenAt).slice(0, cap);
+  }
+  return catalog;
+};
+
 /** Swap a favorite with its neighbour inside the same channel group (array order = display order). */
 export const moveFavorite = (
   favorites: readonly EmojiReference[],

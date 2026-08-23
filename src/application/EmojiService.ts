@@ -5,6 +5,7 @@ import {
   moveFavorite,
   refreshFavorites,
   removeFavorite,
+  upsertEmojiCatalog,
   type AvailableEmoji,
   type EmojiIdentity,
   type EmojiReference,
@@ -54,13 +55,39 @@ export class EmojiService {
     }));
   }
 
-  /** Record fresh display metadata for favorites that were just observed in the native picker. */
+  /** Emojis cached for a channel from previous scans (display metadata for rendering on load). */
+  async catalogFor(channelId: string | undefined): Promise<EmojiReference[]> {
+    if (channelId === undefined) return [];
+    return (await this.repo.load()).emojiCatalog[channelId] ?? [];
+  }
+
+  /**
+   * Record freshly observed emojis: refresh favorite metadata and update the per-channel catalog
+   * cache so favorites and preset shortcodes can render as images on the next load without a scan.
+   */
   async recordScan(available: readonly AvailableEmoji[]): Promise<void> {
     if (available.length === 0) return;
-    await this.repo.update((s) => ({
-      ...s,
-      favoriteEmojis: refreshFavorites(s.favoriteEmojis, available, this.clock()),
-    }));
+    const now = this.clock();
+    const byChannel = new Map<string, AvailableEmoji[]>();
+    for (const emoji of available) {
+      byChannel.set(emoji.channelId, [...(byChannel.get(emoji.channelId) ?? []), emoji]);
+    }
+    await this.repo.update((s) => {
+      const emojiCatalog = { ...s.emojiCatalog };
+      for (const [channelId, emojis] of byChannel) {
+        emojiCatalog[channelId] = upsertEmojiCatalog(
+          emojiCatalog[channelId] ?? [],
+          emojis,
+          this.newId,
+          now,
+        );
+      }
+      return {
+        ...s,
+        favoriteEmojis: refreshFavorites(s.favoriteEmojis, available, now),
+        emojiCatalog,
+      };
+    });
   }
 
   async rememberChannel(channelId: string, channelName: string | undefined): Promise<void> {

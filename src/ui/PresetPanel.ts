@@ -4,7 +4,7 @@ import { emojiIdentityKey } from '../domain/emoji';
 import { h } from './dom';
 import { renderEmojiText } from './emojiText';
 import { renderEmptyState } from './EmptyState';
-import type { PaletteHandlers, PaletteState } from './state';
+import { renderableEmojis, type PaletteHandlers, type PaletteState } from './state';
 import { STRINGS } from './strings';
 
 const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLElement => {
@@ -32,7 +32,7 @@ const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLE
   });
   const sync = (): void => {
     handlers.onPresetFormInput(textarea.value);
-    preview.replaceChildren(...renderEmojiText(textarea.value, state.availableEmojis));
+    preview.replaceChildren(...renderEmojiText(textarea.value, renderableEmojis(state)));
   };
 
   const insertShortcode = (shortcode: string): void => {
@@ -107,7 +107,7 @@ const renderEmojiInserter = (
   });
   if (state.context.channelId === undefined) return container;
   container.append(h('p', { className: 'lcp-section-title', text: STRINGS.insertEmojiTitle }));
-  if (state.availableEmojis.length === 0) {
+  if (renderableEmojis(state).length === 0) {
     container.append(
       h('p', { className: 'lcp-hint', text: STRINGS.insertEmojiHint }),
       h('button', {
@@ -125,7 +125,7 @@ const renderEmojiInserter = (
     h(
       'div',
       { className: 'lcp-emoji-grid', dataset: { testid: 'preset-emoji-grid' } },
-      ...state.availableEmojis.map((emoji) =>
+      ...renderableEmojis(state).map((emoji) =>
         h(
           'button',
           {
@@ -220,7 +220,7 @@ export const renderPresetPanel = (state: PaletteState, handlers: PaletteHandlers
                 },
               },
               // Render known member-emoji shortcodes as images so the chip is identifiable.
-              ...renderEmojiText(preset.text, state.availableEmojis),
+              ...renderEmojiText(preset.text, renderableEmojis(state)),
             ),
           ),
         ),
