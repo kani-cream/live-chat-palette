@@ -71,7 +71,9 @@ const renderPresetForm = (state: PaletteState, handlers: PaletteHandlers): HTMLE
     el.value = el.value.slice(0, start) + shortcode + el.value.slice(end);
     const caret = start + shortcode.length;
     el.setSelectionRange(caret, caret);
-    el.focus();
+    // preventScroll keeps the palette scrolled where the user was (in the emoji strip) instead of
+    // jumping the textarea back into view after they pick an emoji further down the list.
+    el.focus({ preventScroll: true });
     sync();
   };
 

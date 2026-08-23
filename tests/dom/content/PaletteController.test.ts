@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ChatActionService } from '../../../src/application/ChatActionService';
 import { ContextService } from '../../../src/application/ContextService';
 import { EmojiService } from '../../../src/application/EmojiService';
@@ -276,6 +276,19 @@ describe('PaletteController – presets', () => {
     expect(
       t.q('[data-testid="preset-form-preview"]')?.querySelector('img.lcp-inline-emoji'),
     ).not.toBeNull();
+    t.controller.dispose();
+  });
+  it('focuses the textarea without scrolling when inserting an emoji (no scroll jump)', async () => {
+    const t = await setup();
+    t.click(t.q('[data-focus-key="emoji-refresh"]'));
+    await t.settle(50);
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    const textarea = t.q<HTMLTextAreaElement>('[data-testid="preset-form-text"]');
+    if (!textarea) throw new Error('textarea missing');
+    const focusSpy = vi.spyOn(textarea, 'focus');
+    t.click(t.qa('[data-testid="preset-emoji-option"]')[0] ?? null);
+    expect(focusSpy).toHaveBeenCalledWith({ preventScroll: true });
     t.controller.dispose();
   });
   it('offers a refresh action in the preset form when no emojis are discovered yet', async () => {
