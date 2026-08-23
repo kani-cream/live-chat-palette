@@ -1,0 +1,65 @@
+import type { VideoContext } from '../domain/context';
+import type { AvailableEmoji, EmojiIdentity, EmojiReference } from '../domain/emoji';
+import type { MessagePreset, PresetScope } from '../domain/preset';
+import type { PaletteTab } from '../storage/schema';
+import type { Theme } from '../youtube/theme';
+import type { ClickModifiers } from '../application/clickPolicy';
+
+export type NoticeKind = 'error' | 'info';
+
+export interface Notice {
+  kind: NoticeKind;
+  text: string;
+}
+
+export type EmojiScanState = 'idle' | 'scanning' | 'scanned' | 'unsupported';
+
+export interface PaletteState {
+  theme: Theme;
+  tab: PaletteTab;
+  collapsed: boolean;
+  context: VideoContext;
+  chatInputAvailable: boolean;
+  presetInstantSend: boolean;
+  /** Presets already filtered for the current channel. */
+  presets: readonly MessagePreset[];
+  /** Favorites already filtered for the current channel. */
+  favorites: readonly EmojiReference[];
+  /** Custom emojis discovered in the native picker (in-memory, per channel). */
+  availableEmojis: readonly AvailableEmoji[];
+  emojiScan: EmojiScanState;
+  notice: Notice | null;
+  presetFormOpen: boolean;
+  busy: boolean;
+}
+
+export interface PaletteHandlers {
+  onSelectTab: (tab: PaletteTab) => void;
+  onToggleCollapse: () => void;
+  onOpenOptions: () => void;
+  onDismissNotice: () => void;
+  onPresetClick: (preset: MessagePreset, modifiers: ClickModifiers) => void;
+  onOpenPresetForm: () => void;
+  onClosePresetForm: () => void;
+  onSubmitPreset: (text: string, scope: PresetScope) => void;
+  onEmojiClick: (emoji: EmojiReference, modifiers: ClickModifiers) => void;
+  onToggleFavorite: (emoji: AvailableEmoji) => void;
+  onRemoveFavorite: (identity: EmojiIdentity) => void;
+  onRefreshEmojis: () => void;
+}
+
+export const createInitialState = (theme: Theme): PaletteState => ({
+  theme,
+  tab: 'emoji',
+  collapsed: false,
+  context: {},
+  chatInputAvailable: false,
+  presetInstantSend: false,
+  presets: [],
+  favorites: [],
+  availableEmojis: [],
+  emojiScan: 'idle',
+  notice: null,
+  presetFormOpen: false,
+  busy: false,
+});

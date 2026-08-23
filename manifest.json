@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Live Chat Palette",
+  "version": "1.0.0",
+  "description": "Message presets and favorite custom emojis for YouTube Live Chat. Insert with one click; posting stays explicit.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "background/serviceWorker.js"
+  },
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content/watch.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.youtube.com/live_chat*"],
+      "all_frames": true,
+      "js": ["content/chat.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

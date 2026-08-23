@@ -1,0 +1,355 @@
+:host {
+  --lcp-bg: #ffffff;
+  --lcp-bg-subtle: #f2f2f2;
+  --lcp-fg: #0f0f0f;
+  --lcp-fg-muted: #606060;
+  --lcp-border: #d9d9d9;
+  --lcp-accent: #065fd4;
+  --lcp-accent-fg: #ffffff;
+  --lcp-danger: #c00;
+  --lcp-focus: #1a73e8;
+  --lcp-chip-bg: #f2f2f2;
+  --lcp-chip-hover: #e5e5e5;
+  --lcp-star: #f5a623;
+  --lcp-radius: 8px;
+  color-scheme: light;
+  display: block;
+  font-family:
+    Roboto,
+    'Noto Sans JP',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--lcp-fg);
+}
+
+:host([data-theme='dark']) {
+  --lcp-bg: #212121;
+  --lcp-bg-subtle: #2b2b2b;
+  --lcp-fg: #f1f1f1;
+  --lcp-fg-muted: #aaaaaa;
+  --lcp-border: #3f3f3f;
+  --lcp-accent: #3ea6ff;
+  --lcp-accent-fg: #0f0f0f;
+  --lcp-danger: #ff6b6b;
+  --lcp-focus: #8ab4f8;
+  --lcp-chip-bg: #383838;
+  --lcp-chip-hover: #4a4a4a;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+:focus-visible {
+  outline: 2px solid var(--lcp-focus);
+  outline-offset: 2px;
+}
+
+.lcp-panel {
+  background: var(--lcp-bg);
+  border: 1px solid var(--lcp-border);
+  border-radius: var(--lcp-radius);
+  margin: 4px 8px;
+  overflow: hidden;
+}
+
+.lcp-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--lcp-border);
+  background: var(--lcp-bg-subtle);
+}
+
+.lcp-panel[data-collapsed='true'] .lcp-header {
+  border-bottom: none;
+}
+
+.lcp-title {
+  font-weight: 600;
+  font-size: 12px;
+  margin-right: auto;
+  white-space: nowrap;
+}
+
+.lcp-tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.lcp-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--lcp-fg-muted);
+}
+
+.lcp-tab[aria-selected='true'] {
+  background: var(--lcp-bg);
+  border-color: var(--lcp-border);
+  color: var(--lcp-fg);
+  font-weight: 600;
+}
+
+.lcp-icon-button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lcp-fg-muted);
+}
+
+.lcp-icon-button:hover {
+  background: var(--lcp-chip-hover);
+  color: var(--lcp-fg);
+}
+
+.lcp-body {
+  padding: 6px 8px 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.lcp-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  margin: 6px 8px 0;
+  border-radius: 6px;
+  background: var(--lcp-bg-subtle);
+  border: 1px solid var(--lcp-border);
+  border-left: 4px solid var(--lcp-accent);
+}
+
+.lcp-notice[data-kind='error'] {
+  border-left-color: var(--lcp-danger);
+}
+
+.lcp-notice-icon {
+  font-weight: 700;
+  flex: none;
+}
+
+.lcp-notice-text {
+  flex: 1;
+}
+
+.lcp-empty {
+  text-align: center;
+  padding: 8px 4px;
+  color: var(--lcp-fg-muted);
+}
+
+.lcp-empty-title {
+  color: var(--lcp-fg);
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.lcp-empty p {
+  margin: 0 0 8px;
+}
+
+.lcp-button {
+  border: 1px solid var(--lcp-border);
+  background: var(--lcp-bg);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+.lcp-button:hover:not(:disabled) {
+  background: var(--lcp-chip-hover);
+}
+
+.lcp-button-primary {
+  background: var(--lcp-accent);
+  color: var(--lcp-accent-fg);
+  border-color: var(--lcp-accent);
+}
+
+.lcp-preset-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.lcp-preset-chip {
+  background: var(--lcp-chip-bg);
+  border: 1px solid var(--lcp-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  max-width: 100%;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.lcp-preset-chip:hover:not(:disabled) {
+  background: var(--lcp-chip-hover);
+}
+
+.lcp-preset-chip[data-scope='channel'] {
+  border-style: dashed;
+}
+
+.lcp-hint {
+  color: var(--lcp-fg-muted);
+  font-size: 11px;
+  margin: 0 0 6px;
+}
+
+.lcp-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.lcp-form {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid var(--lcp-border);
+  border-radius: 6px;
+  background: var(--lcp-bg-subtle);
+}
+
+.lcp-form label {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--lcp-fg-muted);
+}
+
+.lcp-form textarea,
+.lcp-form select {
+  font: inherit;
+  color: var(--lcp-fg);
+  background: var(--lcp-bg);
+  border: 1px solid var(--lcp-border);
+  border-radius: 4px;
+  padding: 4px 6px;
+  resize: vertical;
+}
+
+.lcp-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lcp-fg-muted);
+  margin: 8px 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lcp-emoji-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lcp-emoji-item {
+  position: relative;
+  display: inline-flex;
+}
+
+.lcp-emoji-button {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lcp-emoji-button:hover:not(:disabled) {
+  background: var(--lcp-chip-hover);
+}
+
+.lcp-emoji-button img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.lcp-emoji-button[data-unavailable='true'] {
+  filter: grayscale(1);
+}
+
+.lcp-emoji-fallback {
+  font-size: 10px;
+  max-width: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lcp-emoji-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  font-size: 10px;
+  line-height: 1;
+  background: var(--lcp-bg);
+  border: 1px solid var(--lcp-border);
+  border-radius: 999px;
+  padding: 1px 2px;
+}
+
+.lcp-star {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 999px;
+  border: 1px solid var(--lcp-border);
+  background: var(--lcp-bg);
+  padding: 0;
+}
+
+.lcp-star[aria-pressed='true'] {
+  color: var(--lcp-star);
+}
+
+.lcp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

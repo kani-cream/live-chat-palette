@@ -6,3 +6,12 @@
 *.iml
 out
 gen
+
+# Build / test output
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.zip
+.DS_Store
