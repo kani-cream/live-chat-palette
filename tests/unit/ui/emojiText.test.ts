@@ -42,9 +42,15 @@ describe('tokenizeEmojiText', () => {
       { type: 'text', value: 'x :_unknown: y' },
     ]);
   });
-  it('does not treat standard :smile: shortcodes as custom emojis', () => {
-    expect(tokenizeEmojiText(':smile:', [emoji(':smile:')])).toEqual([
-      { type: 'text', value: ':smile:' },
+  it('treats known non-underscore shortcodes (official stamps) as emojis', () => {
+    const tokens = tokenizeEmojiText(':hourglass-purple-sand-orange:', [
+      emoji(':hourglass-purple-sand-orange:'),
+    ]);
+    expect(tokens).toEqual([{ type: 'emoji', emoji: emoji(':hourglass-purple-sand-orange:') }]);
+  });
+  it('leaves shortcode-looking text (e.g. times) as text when not in the catalog', () => {
+    expect(tokenizeEmojiText('開始は 12:30:45 です', available)).toEqual([
+      { type: 'text', value: '開始は 12:30:45 です' },
     ]);
   });
   it('does not render an emoji that has no image', () => {

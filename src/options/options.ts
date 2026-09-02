@@ -1,7 +1,7 @@
 import { EmojiService } from '../application/EmojiService';
 import { PresetService } from '../application/PresetService';
 import { SettingsService } from '../application/SettingsService';
-import type { AvailableEmoji, EmojiReference } from '../domain/emoji';
+import { isGlobalEmoji, type AvailableEmoji, type EmojiReference } from '../domain/emoji';
 import { sortPresets, type MessagePreset } from '../domain/preset';
 import { logger } from '../shared/logger';
 import type { StorageSchema } from '../storage/schema';
@@ -120,9 +120,14 @@ export class OptionsPage {
     const schema = this.schema;
     if (!schema) return [];
     const scoped = preset.scope === 'channel' && preset.channelId !== undefined;
+    const all = Object.values(schema.emojiCatalog).flat();
+    // YouTube-official (global) stamps render for every preset, whatever its channel scope.
     const catalog = scoped
-      ? (schema.emojiCatalog[preset.channelId ?? ''] ?? [])
-      : Object.values(schema.emojiCatalog).flat();
+      ? [
+          ...(schema.emojiCatalog[preset.channelId ?? ''] ?? []),
+          ...all.filter((e) => isGlobalEmoji(e)),
+        ]
+      : all;
     const favorites = scoped
       ? schema.favoriteEmojis.filter((f) => f.channelId === preset.channelId)
       : schema.favoriteEmojis;

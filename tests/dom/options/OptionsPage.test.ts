@@ -108,6 +108,39 @@ describe('OptionsPage', () => {
     expect(chip?.querySelector('img.lcp-inline-emoji')).not.toBeNull();
     expect(chip?.textContent).toContain('おつ');
   });
+  it('renders official (global) stamps in channel-scoped presets from any channel catalog', async () => {
+    const area = new FakeStorageArea();
+    const repo = new StorageRepository(area);
+    await new PresetService(repo).add({
+      text: 'GG :hourglass-purple-sand-orange:',
+      scope: 'channel',
+      channelId: CH_A,
+    });
+    // The stamp is cached under YouTube's own channelId, not the preset's channel.
+    await repo.update((s) => ({
+      ...s,
+      channels: { [CH_A]: { channelId: CH_A, channelName: 'Channel A', lastSeenAt: 1 } },
+      emojiCatalog: {
+        UCkszU2WH9gy1mb0dV11UJgx: [
+          {
+            id: 'g1',
+            channelId: 'UCkszU2WH9gy1mb0dV11UJgx',
+            familyName: 'YouTube',
+            emojiName: ':hourglass-purple-sand-orange:',
+            displayName: 'hourglass',
+            imageUrl: 'https://img.example/hourglass.png',
+            lastSeenAt: 1,
+            global: true as const,
+          },
+        ],
+      },
+    }));
+    const t = await setup(area);
+    const chip = t.root.querySelector('[data-section="channel-presets"] .text');
+    expect(chip?.querySelector('img.lcp-inline-emoji')?.getAttribute('src')).toBe(
+      'https://img.example/hourglass.png',
+    );
+  });
   it('shows validation errors for empty presets', async () => {
     const t = await setup();
     t.root

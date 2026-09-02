@@ -73,6 +73,16 @@ describe('content script frame roles', () => {
           displayName: 'wave',
           imageUrl: 'https://img.example/wave.png',
         },
+        {
+          // Official stamp: cached under YouTube's own channelId, marked global. Its presence
+          // must not confuse the "single channelId identifies this stream" context hint.
+          channelId: 'UCkszU2WH9gy1mb0dV11UJgx',
+          familyName: 'YouTube',
+          emojiName: ':hourglass-purple-sand-orange:',
+          displayName: 'hourglass',
+          imageUrl: 'https://img.example/hourglass.png',
+          global: true,
+        },
         { channelId: 'bad', emojiName: '' }, // spoofed/invalid -> dropped
       ],
     });
@@ -80,9 +90,10 @@ describe('content script frame roles', () => {
     await new Promise((r) => setTimeout(r, 0));
     const stored = await chromeEnv.local.get('liveChatPalette');
     const schema = stored.liveChatPalette as {
-      emojiCatalog: Record<string, { emojiName: string }[]>;
+      emojiCatalog: Record<string, { emojiName: string; global?: true }[]>;
     };
     expect(schema.emojiCatalog[CH_A]?.map((e) => e.emojiName)).toEqual([':_wave:']);
+    expect(schema.emojiCatalog.UCkszU2WH9gy1mb0dV11UJgx?.map((e) => e.global)).toEqual([true]);
     controller?.stop();
   });
   it('chat script also runs in a popped-out chat (top frame)', () => {

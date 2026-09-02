@@ -2,16 +2,21 @@ import { isChannelId } from '../domain/context';
 import type { AvailableEmoji } from '../domain/emoji';
 
 /**
- * Parse the current channel's custom/member emojis from YouTube's `ytInitialData`.
+ * Parse the channel's custom/member emojis AND YouTube's official stamps from `ytInitialData`.
  *
  * Verified against a real live stream: the full emoji set (image URL + shortcode + family) lives in
- * `ytInitialData` under `emojiPickerRenderer.categories[].emojiPickerCategoryRenderer` (with
- * `categoryType === 'CATEGORY_TYPE_CUSTOM'` and an `emojiIds` list) resolved against a flat `emojis`
- * array. This means the full catalog is available on page load WITHOUT opening the native picker,
- * so it can be cached automatically and refreshed on every load. Only `emojiId` (`<channelId>/<hash>`),
- * `shortcuts` (the typeable `:_name:`), `image.thumbnails[].url` and the accessibility label are used.
+ * `ytInitialData` under `emojiPickerRenderer.categories[].emojiPickerCategoryRenderer` (with an
+ * `emojiIds` list) resolved against a flat `emojis` array. `CATEGORY_TYPE_CUSTOM` holds the
+ * channel's member emojis (`:_name:`); `CATEGORY_TYPE_GLOBAL` holds YouTube's official stamps
+ * (`:name:`, usable on every channel — marked `global`). This means the full catalog is available
+ * on page load WITHOUT opening the native picker, so it can be cached automatically and refreshed
+ * on every load. Only `emojiId` (`<channelId>/<hash>`), `shortcuts` (the typeable shortcode),
+ * `image.thumbnails[].url` and the accessibility label are used.
  */
 const CHANNEL_EMOJI_ID = /^(UC[\w-]{22})\//;
+
+/** Picker category types whose emojis are extracted; unicode emojis stay plain text. */
+const EXTRACTED_CATEGORY_TYPES = new Set(['CATEGORY_TYPE_CUSTOM', 'CATEGORY_TYPE_GLOBAL']);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -80,7 +85,7 @@ const labelText = (emoji: Record<string, unknown>): string => {
   return isRecord(data) && typeof data.label === 'string' ? data.label : '';
 };
 
-export const extractCustomEmojis = (ytInitialData: unknown): AvailableEmoji[] => {
+export const extractPickerEmojis = (ytInitialData: unknown): AvailableEmoji[] => {
   const picker = findFirst(ytInitialData, 'emojiPickerRenderer');
   if (!isRecord(picker) || !Array.isArray(picker.categories)) return [];
 
@@ -94,7 +99,10 @@ export const extractCustomEmojis = (ytInitialData: unknown): AvailableEmoji[] =>
   const seen = new Set<string>();
   for (const category of picker.categories) {
     const cr = unwrap(category, 'emojiPickerCategoryRenderer');
-    if (cr?.categoryType !== 'CATEGORY_TYPE_CUSTOM') continue;
+    if (typeof cr?.categoryType !== 'string' || !EXTRACTED_CATEGORY_TYPES.has(cr.categoryType)) {
+      continue;
+    }
+    const isGlobal = cr.categoryType === 'CATEGORY_TYPE_GLOBAL';
     const familyName = titleText(cr.title);
     const emojiIds: unknown[] = Array.isArray(cr.emojiIds) ? cr.emojiIds : [];
     for (const rawId of emojiIds) {
@@ -115,6 +123,7 @@ export const extractCustomEmojis = (ytInitialData: unknown): AvailableEmoji[] =>
         emojiName: shortcut,
         displayName: labelText(emoji) || shortcut,
         ...(url !== undefined ? { imageUrl: url } : {}),
+        ...(isGlobal ? { global: true as const } : {}),
       });
     }
   }

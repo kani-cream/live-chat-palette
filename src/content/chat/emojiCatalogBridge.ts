@@ -29,12 +29,14 @@ const sanitizeEmoji = (value: unknown): AvailableEmoji | null => {
   if (typeof value.emojiName !== 'string' || value.emojiName.length === 0) return null;
   if (typeof value.displayName !== 'string') return null;
   if (value.imageUrl !== undefined && typeof value.imageUrl !== 'string') return null;
+  if (value.global !== undefined && value.global !== true) return null;
   return {
     channelId: value.channelId,
     familyName: value.familyName,
     emojiName: value.emojiName,
     displayName: value.displayName,
     ...(typeof value.imageUrl === 'string' ? { imageUrl: value.imageUrl } : {}),
+    ...(value.global === true ? { global: true as const } : {}),
   };
 };
 

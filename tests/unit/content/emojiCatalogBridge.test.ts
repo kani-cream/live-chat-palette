@@ -21,6 +21,30 @@ describe('parseCatalogMessage', () => {
     });
     expect(result?.map((e) => e.emojiName)).toEqual([':_a:']);
   });
+  it('carries the global flag through and rejects non-true values', () => {
+    const result = parseCatalogMessage({
+      [CATALOG_MESSAGE]: true,
+      emojis: [
+        {
+          channelId: CH_A,
+          familyName: 'YouTube',
+          emojiName: ':stamp:',
+          displayName: 's',
+          global: true,
+        },
+        { channelId: CH_A, familyName: 'YouTube', emojiName: ':bad:', displayName: 'b', global: 1 },
+      ],
+    });
+    expect(result).toEqual([
+      {
+        channelId: CH_A,
+        familyName: 'YouTube',
+        emojiName: ':stamp:',
+        displayName: 's',
+        global: true,
+      },
+    ]);
+  });
   it('rejects non-catalog payloads', () => {
     expect(parseCatalogMessage(null)).toBeNull();
     expect(parseCatalogMessage({ emojis: [] })).toBeNull();

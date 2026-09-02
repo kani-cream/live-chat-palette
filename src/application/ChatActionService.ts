@@ -13,9 +13,13 @@ export const DEFAULT_SEND_LOCK_MS = 800;
  */
 export const DEFAULT_CHUNK_DELAY_MS = 250;
 
-/** Splits text into `:_shortcode:` tokens and the plain text between them (keeps both). */
-const SHORTCODE_SPLIT = /(:_[^:\s]+:)/g;
-const HAS_SHORTCODE = /:_[^:\s]+:/;
+/**
+ * Splits text into `:shortcode:` tokens and the plain text between them (keeps both). Covers both
+ * member emojis (`:_name:`) and YouTube-official stamps (`:name:`); a segment that is not actually
+ * an emoji is simply inserted as text, so over-matching is harmless.
+ */
+const SHORTCODE_SPLIT = /(:[^:\s]+:)/g;
+const HAS_SHORTCODE = /:[^:\s]+:/;
 
 export interface ChatActionOptions {
   sendLockMs?: number;
@@ -96,9 +100,9 @@ export class ChatActionService {
   }
 
   /**
-   * Insert a preset. Plain text goes in as one strict, exact insertion. Text containing member
-   * emoji shortcodes is inserted segment-by-segment with a delay, so YouTube converts every
-   * `:_shortcode:` to its emoji image (a single bulk insertion converts only the last one).
+   * Insert a preset. Plain text goes in as one strict, exact insertion. Text containing emoji
+   * shortcodes is inserted segment-by-segment with a delay, so YouTube converts every
+   * `:shortcode:` to its emoji image (a single bulk insertion converts only the last one).
    */
   private async compose(text: string): Promise<Result<void>> {
     if (!HAS_SHORTCODE.test(text)) return this.chatInput.insertText(text);

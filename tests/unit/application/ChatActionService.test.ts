@@ -78,6 +78,16 @@ describe('ChatActionService.insertPreset', () => {
     expect(chunks).toEqual(['おつ ', ':_wave:', ':_heart:']);
   });
 
+  it('also chunks official-stamp shortcodes (no underscore) so each one converts', async () => {
+    const { service, chatInput } = setup();
+    const result = await service.insertPreset('GG :hourglass-purple-sand-orange::_wave:');
+    expect(result.ok).toBe(true);
+    const chunks = (chatInput.insertChunk as ReturnType<typeof vi.fn>).mock.calls.map((c) =>
+      String(c[0]),
+    );
+    expect(chunks).toEqual(['GG ', ':hourglass-purple-sand-orange:', ':_wave:']);
+  });
+
   it('stops and reports if a segment fails to insert', async () => {
     const { service, chatInput } = setup({ chunkResult: err('INSERT_UNCONFIRMED', 'x') });
     const result = await service.insertPreset(':_wave::_heart:');

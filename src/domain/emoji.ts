@@ -9,6 +9,8 @@ export interface EmojiReference {
   displayName: string;
   imageUrl?: string;
   lastSeenAt: number;
+  /** YouTube-official stamp (usable on every channel), as opposed to a channel/member emoji. */
+  global?: true;
 }
 
 /** Emoji observed in YouTube's native picker right now. */
@@ -18,6 +20,8 @@ export interface AvailableEmoji {
   emojiName: string;
   displayName: string;
   imageUrl?: string;
+  /** YouTube-official stamp (usable on every channel), as opposed to a channel/member emoji. */
+  global?: true;
 }
 
 export interface EmojiIdentity {
@@ -29,6 +33,9 @@ export interface EmojiIdentity {
 /** Identity key with unit-separator delimiters (names may contain spaces; U+001F never appears in them). */
 export const emojiIdentityKey = (e: EmojiIdentity): string =>
   [e.channelId, e.familyName, e.emojiName].join('\u001f');
+
+/** YouTube-official stamps work on every channel; member/channel emojis only on their own. */
+export const isGlobalEmoji = (e: { global?: true }): boolean => e.global === true;
 
 export const sameEmoji = (a: EmojiIdentity, b: EmojiIdentity): boolean =>
   a.channelId === b.channelId && a.familyName === b.familyName && a.emojiName === b.emojiName;
@@ -43,6 +50,7 @@ export const isEmojiReference = (value: unknown): value is EmojiReference => {
   if (typeof v.displayName !== 'string') return false;
   if (v.imageUrl !== undefined && typeof v.imageUrl !== 'string') return false;
   if (typeof v.lastSeenAt !== 'number') return false;
+  if (v.global !== undefined && v.global !== true) return false;
   return true;
 };
 
@@ -86,6 +94,7 @@ export const addFavorite = (
     displayName: emoji.displayName,
     lastSeenAt: now,
     ...(emoji.imageUrl !== undefined ? { imageUrl: emoji.imageUrl } : {}),
+    ...(emoji.global === true ? { global: true as const } : {}),
   };
   return [...favorites, created];
 };
@@ -140,6 +149,7 @@ export const upsertEmojiCatalog = (
         displayName: emoji.displayName,
         lastSeenAt: now,
         ...(emoji.imageUrl !== undefined ? { imageUrl: emoji.imageUrl } : {}),
+        ...(emoji.global === true ? { global: true as const } : {}),
       });
     }
   }

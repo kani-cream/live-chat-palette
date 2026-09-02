@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractCustomEmojis } from '../../../src/youtube/emojiCatalog';
+import { extractPickerEmojis } from '../../../src/youtube/emojiCatalog';
 
 const CH = 'UCvzGlP9oQwU--Y0r9id_jnA';
 
@@ -67,9 +67,9 @@ const initialData = (extra: Record<string, unknown> = {}) => ({
   },
 });
 
-describe('extractCustomEmojis', () => {
-  it('extracts only CATEGORY_TYPE_CUSTOM emojis with shortcode, image and family', () => {
-    const emojis = extractCustomEmojis(initialData());
+describe('extractPickerEmojis', () => {
+  it('extracts custom (member) and global (official stamp) emojis, ignoring unicode ones', () => {
+    const emojis = extractPickerEmojis(initialData());
     expect(emojis).toEqual([
       {
         channelId: CH,
@@ -85,17 +85,28 @@ describe('extractCustomEmojis', () => {
         displayName: ':_heart:', // no accessibility label -> falls back to the shortcode
         imageUrl: 'https://yt3.ggpht.com/heart',
       },
+      {
+        channelId: 'UCkszU2WH9gy1mb0dV-11UJg',
+        familyName: 'YouTube',
+        emojiName: ':globalthing:',
+        displayName: ':globalthing:',
+        imageUrl: 'https://yt3.ggpht.com/global',
+        global: true, // official stamps are marked global (usable on every channel)
+      },
     ]);
   });
   it('returns [] for missing/garbage data', () => {
-    expect(extractCustomEmojis(undefined)).toEqual([]);
-    expect(extractCustomEmojis({})).toEqual([]);
-    expect(extractCustomEmojis({ x: { emojiPickerRenderer: {} } })).toEqual([]);
+    expect(extractPickerEmojis(undefined)).toEqual([]);
+    expect(extractPickerEmojis({})).toEqual([]);
+    expect(extractPickerEmojis({ x: { emojiPickerRenderer: {} } })).toEqual([]);
   });
   it('ignores emojiIds without a matching emoji entry', () => {
     const data = initialData();
     // Remove the heart from the emojis map; its category id should be skipped.
     (data.contents.liveChatRenderer.emojis as unknown[]).splice(1, 1);
-    expect(extractCustomEmojis(data).map((e) => e.emojiName)).toEqual([':_スバルわたあめうさぎ:']);
+    expect(extractPickerEmojis(data).map((e) => e.emojiName)).toEqual([
+      ':_スバルわたあめうさぎ:',
+      ':globalthing:',
+    ]);
   });
 });
