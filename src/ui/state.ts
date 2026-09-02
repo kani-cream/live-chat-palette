@@ -28,6 +28,8 @@ export interface PaletteState {
   favorites: readonly EmojiReference[];
   /** Custom emojis discovered in the native picker (in-memory, per channel). */
   availableEmojis: readonly AvailableEmoji[];
+  /** YouTube-official stamps (usable on every channel), for rendering `:shortcode:` as images. */
+  globalEmojis: readonly AvailableEmoji[];
   emojiScan: EmojiScanState;
   notice: Notice | null;
   presetFormOpen: boolean;
@@ -61,6 +63,7 @@ export const createInitialState = (theme: Theme): PaletteState => ({
   presets: [],
   favorites: [],
   availableEmojis: [],
+  globalEmojis: [],
   emojiScan: 'idle',
   notice: null,
   presetFormOpen: false,
@@ -69,12 +72,13 @@ export const createInitialState = (theme: Theme): PaletteState => ({
 });
 
 /**
- * Emojis usable for rendering shortcodes as images: the cached/scanned catalog plus favorites
- * (favorites carry their own cached image, so preset shortcodes render even before any live scan).
+ * Emojis usable for rendering shortcodes as images: the cached/scanned catalog, YouTube's official
+ * stamps, plus favorites (favorites carry their own cached image, so preset shortcodes render even
+ * before any live scan).
  */
 export const renderableEmojis = (state: PaletteState): AvailableEmoji[] => {
   const byIdentity = new Map<string, AvailableEmoji>();
-  for (const emoji of [...state.availableEmojis, ...state.favorites]) {
+  for (const emoji of [...state.availableEmojis, ...state.globalEmojis, ...state.favorites]) {
     byIdentity.set(emojiIdentityKey(emoji), emoji);
   }
   return [...byIdentity.values()];

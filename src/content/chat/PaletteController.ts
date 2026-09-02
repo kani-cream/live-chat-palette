@@ -12,6 +12,7 @@ import type { VideoContext } from '../../domain/context';
 import {
   favoritesForChannel,
   isFavorite,
+  isGlobalEmoji,
   type AvailableEmoji,
   type EmojiIdentity,
   type EmojiReference,
@@ -135,13 +136,19 @@ export class PaletteController {
   ): void {
     // availableEmojis is derived from the persisted per-channel catalog, so when the MAIN-world
     // discovery caches emojis (or a Refresh updates them), the storage subscription re-renders here.
+    // YouTube-official (global) stamps are cached under YouTube's own channelId, so they are split
+    // out and kept renderable regardless of which channel is being watched.
     const cached =
-      context.channelId !== undefined ? (schema.emojiCatalog[context.channelId] ?? []) : [];
+      context.channelId !== undefined
+        ? (schema.emojiCatalog[context.channelId] ?? []).filter((e) => !isGlobalEmoji(e))
+        : [];
+    const globalEmojis = Object.values(schema.emojiCatalog).flat().filter(isGlobalEmoji);
     this.setState({
       context,
       presets: presetsForChannel(schema.presets, context.channelId),
       favorites: favoritesForChannel(schema.favoriteEmojis, context.channelId),
       availableEmojis: cached,
+      globalEmojis,
       presetInstantSend: schema.settings.presetInstantSend,
       collapsed: schema.settings.collapsed,
       tab: schema.settings.lastSelectedTab,

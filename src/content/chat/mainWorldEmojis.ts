@@ -1,5 +1,5 @@
 import { CATALOG_MESSAGE, CATALOG_REQUEST, type EmojiCatalogMessage } from './emojiCatalogBridge';
-import { extractCustomEmojis } from '../../youtube/emojiCatalog';
+import { extractPickerEmojis } from '../../youtube/emojiCatalog';
 
 /**
  * Runs in the page's MAIN world (declared with `"world": "MAIN"`), because `window.ytInitialData` is
@@ -11,7 +11,7 @@ import { extractCustomEmojis } from '../../youtube/emojiCatalog';
  */
 const postCatalog = (win: Window): void => {
   try {
-    const emojis = extractCustomEmojis((win as { ytInitialData?: unknown }).ytInitialData);
+    const emojis = extractPickerEmojis((win as { ytInitialData?: unknown }).ytInitialData);
     if (emojis.length === 0) return;
     const message: EmojiCatalogMessage = { [CATALOG_MESSAGE]: true, emojis };
     win.postMessage(message, win.location.origin);

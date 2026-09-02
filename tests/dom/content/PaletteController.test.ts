@@ -527,6 +527,40 @@ describe('PaletteController – emojis', () => {
     expect(chip?.querySelector('img.lcp-inline-emoji')).not.toBeNull();
     t.controller.dispose();
   });
+  it('renders official (global) stamp shortcodes as images while watching any channel', async () => {
+    const area = new FakeStorageArea();
+    const repo = new StorageRepository(area);
+    await new PresetService(repo).add({
+      text: 'GG :hourglass-purple-sand-orange:',
+      scope: 'global',
+    });
+    await repo.update((s) => ({
+      ...s,
+      // Official stamps are cached under YouTube's own channelId (not the watched channel CH_A).
+      emojiCatalog: {
+        UCkszU2WH9gy1mb0dV11UJgx: [
+          {
+            id: 'g1',
+            channelId: 'UCkszU2WH9gy1mb0dV11UJgx',
+            familyName: 'YouTube',
+            emojiName: ':hourglass-purple-sand-orange:',
+            displayName: 'hourglass',
+            imageUrl: 'https://img.example/yt/hourglass.png',
+            lastSeenAt: 1,
+            global: true as const,
+          },
+        ],
+      },
+    }));
+    const t = await setup({ area });
+    // Global stamps are not listed as this channel's custom emojis…
+    expect(t.qa('[data-testid="available-emoji"]')).toHaveLength(0);
+    // …but the preset chip still renders the stamp as an image.
+    t.click(t.q('[data-testid="tab-preset"]'));
+    const img = t.q('.lcp-preset-chip')?.querySelector('img.lcp-inline-emoji');
+    expect(img?.getAttribute('src')).toBe('https://img.example/yt/hourglass.png');
+    t.controller.dispose();
+  });
   it('favorites and unfavorites emojis; favorite click inserts only (even with Cmd/Ctrl)', async () => {
     const t = await setup();
     t.click(t.q('[data-focus-key="emoji-refresh"]'));

@@ -1,4 +1,5 @@
 import { ChatActionService } from '../../application/ChatActionService';
+import { isGlobalEmoji } from '../../domain/emoji';
 import { ContextService } from '../../application/ContextService';
 import { EmojiService } from '../../application/EmojiService';
 import { PresetService } from '../../application/PresetService';
@@ -39,7 +40,10 @@ const listenForEmojiCatalog = (
     void emojis.recordScan(catalog).then(() => {
       // Member emojis belong to the streamer's channel; a single distinct channelId reliably
       // identifies this stream, so use it to resolve the context from the very first load.
-      const channels = new Set(catalog.map((emoji) => emoji.channelId));
+      // Global (YouTube-official) stamps carry YouTube's own channelId, so they are excluded.
+      const channels = new Set(
+        catalog.filter((emoji) => !isGlobalEmoji(emoji)).map((emoji) => emoji.channelId),
+      );
       if (channels.size === 1) {
         const channelId = [...channels][0];
         if (channelId) contextService.applyChannelHint(channelId);
