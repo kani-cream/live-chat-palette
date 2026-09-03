@@ -23,6 +23,8 @@ interface SetupOptions {
   context?: VideoContext | null;
   area?: FakeStorageArea;
   ownVideoId?: string | null;
+  /** Return right after the synchronous first render, leaving the initial load pending. */
+  deferStart?: boolean;
 }
 
 const setup = async (options: SetupOptions = {}) => {
@@ -72,8 +74,11 @@ const setup = async (options: SetupOptions = {}) => {
     contextService,
     openOptions: () => opened.push(1),
   });
-  await controller.start();
-  await flushPromises();
+  const started = controller.start();
+  if (!options.deferStart) {
+    await started;
+    await flushPromises();
+  }
   const shadow = host.shadowRoot;
   if (!shadow) throw new Error('shadow root missing');
   const q = <T extends HTMLElement = HTMLElement>(selector: string): T | null =>
@@ -95,6 +100,7 @@ const setup = async (options: SetupOptions = {}) => {
   };
   return {
     controller,
+    started,
     harness,
     host,
     shadow,
@@ -242,6 +248,30 @@ describe('PaletteController – presets', () => {
     t.controller.dispose();
   });
 
+  it('keeps a form opened before the initial load finishes when the context merely resolves', async () => {
+    // Real timing: the panel is interactive right after the first synchronous render, while the
+    // storage load and the watch frame's context broadcast are still in flight.
+    const t = await setup({ deferStart: true });
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    expect(t.q('[data-testid="preset-form"]')).not.toBeNull();
+    // The watch frame publishes the same video this frame belongs to — not a stream change.
+    t.broadcast({ videoId: VIDEO_A, channelId: CH_A });
+    await t.started;
+    await t.settle();
+    expect(t.q('[data-testid="preset-form"]')).not.toBeNull();
+    t.controller.dispose();
+  });
+  it('closes an open form when the stream actually changes', async () => {
+    const t = await setup();
+    t.click(t.q('[data-testid="tab-preset"]'));
+    t.click(t.q('[data-focus-key="preset-add"]'));
+    expect(t.q('[data-testid="preset-form"]')).not.toBeNull();
+    t.broadcast({ videoId: VIDEO_B, channelId: CH_B });
+    await t.settle();
+    expect(t.q('[data-testid="preset-form"]')).toBeNull();
+    t.controller.dispose();
+  });
   it('rejects an empty preset with a visible error', async () => {
     const t = await setup();
     await addPresetViaForm(t, '');

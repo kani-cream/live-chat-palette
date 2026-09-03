@@ -159,12 +159,14 @@ export class PaletteController {
   }
 
   private async onContextChange(context: VideoContext): Promise<void> {
-    const videoChanged = context.videoId !== this.state.context.videoId;
+    // Only reset an open preset form when the stream actually changed — not when the context
+    // simply resolves (channel id, or the very first video id while the initial load is still
+    // pending), which would otherwise close the form the user just opened.
+    const previousVideoId = this.state.context.videoId;
+    const videoChanged = previousVideoId !== undefined && context.videoId !== previousVideoId;
     const schema = await this.deps.repo.load();
     if (this.disposed) return;
     this.applySchema(schema, context, { resetEmojis: true });
-    // Only reset an open preset form when the stream actually changed — not when the channel id
-    // simply resolves for the same video (which would otherwise close the form the user just opened).
     if (videoChanged) {
       this.setState({ notice: null, presetFormOpen: false, presetFormText: '' });
     }
