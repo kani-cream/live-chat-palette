@@ -120,10 +120,13 @@ browser (`chrome.storage.local`), plus per-tab video/channel context in `chrome.
 | `storage`                                      | Save your presets, favorite emojis and preferences locally.                                                |
 | Content scripts on `https://www.youtube.com/*` | Read the chat/watch DOM to place the palette and use YouTube's native input, emoji picker and send button. |
 
-No host permissions are requested, and none of `tabs`, `history`, `cookies`, `identity`,
-`webRequest`, `downloads`, `clipboardRead`/`clipboardWrite`, or `scripting` are used. The extension
-contains no remote code (`eval`, `new Function`, and remote/CDN scripts are forbidden and checked by
-`npm run validate`).
+The manifest declares no `host_permissions`; the only host access is the content-script `matches`
+above, which is limited to `www.youtube.com`. Chrome treats those match patterns as host access,
+so the install prompt (and the Web Store review notice) shows "read and change your data on
+www.youtube.com" — that access is what places the palette and drives YouTube's own controls, and
+nothing else. None of `tabs`, `history`, `cookies`, `identity`, `webRequest`, `downloads`,
+`clipboardRead`/`clipboardWrite`, or `scripting` are used. The extension contains no remote code
+(`eval`, `new Function`, and remote/CDN scripts are forbidden and checked by `npm run validate`).
 
 ## License
 
