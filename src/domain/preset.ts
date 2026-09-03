@@ -44,16 +44,29 @@ export const sortPresets = (presets: readonly MessagePreset[]): MessagePreset[] 
 const groupKey = (p: MessagePreset): string =>
   p.scope === 'global' ? 'global' : `channel:${p.channelId ?? ''}`;
 
-/** Presets visible for a context: globals always, channel presets only for a known matching channel. */
-export const presetsForChannel = (
+/** Presets visible for a context, split by scope so each section keeps its own ordering. */
+export interface PresetSections {
+  /** Presets scoped to the current channel; always empty when the channel is unknown. */
+  channel: MessagePreset[];
+  /** Presets shared across all channels. */
+  global: MessagePreset[];
+}
+
+/**
+ * Split presets for a context: globals always, channel presets only for a known matching channel.
+ * Each list is sorted on its own; `order` values are never compared across scopes.
+ */
+export const splitPresetsForChannel = (
   presets: readonly MessagePreset[],
   channelId: string | undefined,
-): MessagePreset[] =>
-  sortPresets(
+): PresetSections => ({
+  channel: sortPresets(
     presets.filter(
-      (p) => p.scope === 'global' || (channelId !== undefined && p.channelId === channelId),
+      (p) => p.scope === 'channel' && channelId !== undefined && p.channelId === channelId,
     ),
-  );
+  ),
+  global: sortPresets(presets.filter((p) => p.scope === 'global')),
+});
 
 /** Re-number `order` within each scope/channel group so it stays dense. */
 export const normalizeOrders = (presets: readonly MessagePreset[]): MessagePreset[] => {

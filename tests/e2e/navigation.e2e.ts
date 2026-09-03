@@ -54,7 +54,10 @@ test.describe('SPA navigation and iframe handling', () => {
     await seedBothChannels(serviceWorker);
     await page.goto(watchUrl(VIDEO_A));
     const root = palette(chatFrame(page));
-    await expect(root.locator('.lcp-preset-chip')).toHaveText(['global', 'for A']);
+    await expect(root.locator('.lcp-preset-chip')).toHaveText(['for A', 'global']);
+    await expect(
+      root.locator('[data-testid="preset-section-channel"] .lcp-preset-chip'),
+    ).toHaveText(['for A']);
 
     // Simulate YouTube swapping the video (and chat iframe src) without a full reload.
     await page.evaluate(
@@ -81,7 +84,14 @@ test.describe('SPA navigation and iframe handling', () => {
     );
 
     const rootB = palette(chatFrame(page));
-    await expect(rootB.locator('.lcp-preset-chip')).toHaveText(['global', 'for B']);
+    // Channel A presets are gone, channel B presets appear, globals remain — in section order.
+    await expect(rootB.locator('.lcp-preset-chip')).toHaveText(['for B', 'global']);
+    await expect(
+      rootB.locator('[data-testid="preset-section-channel"] .lcp-preset-chip'),
+    ).toHaveText(['for B']);
+    await expect(
+      rootB.locator('[data-testid="preset-section-global"] .lcp-preset-chip'),
+    ).toHaveText(['global']);
     // Exactly one palette instance, not double-mounted.
     await expect(palette(chatFrame(page))).toHaveCount(1);
   });
@@ -117,6 +127,7 @@ test.describe('SPA navigation and iframe handling', () => {
     // The popup tab has no resolved channel, so only global presets appear; it never
     // guesses a channel from the video id alone (design §31 best-effort / fail closed).
     await expect(root.locator('.lcp-preset-chip')).toHaveText(['global']);
+    await expect(root.locator('[data-testid="preset-section-channel"]')).toHaveCount(0);
     await popup.close();
   });
 });

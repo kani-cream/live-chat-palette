@@ -17,7 +17,7 @@ import {
   type EmojiIdentity,
   type EmojiReference,
 } from '../../domain/emoji';
-import { presetsForChannel, type MessagePreset, type PresetScope } from '../../domain/preset';
+import { splitPresetsForChannel, type MessagePreset, type PresetScope } from '../../domain/preset';
 import { logger } from '../../shared/logger';
 import type { ResultError } from '../../shared/result';
 import type { PaletteTab, StorageSchema } from '../../storage/schema';
@@ -143,9 +143,11 @@ export class PaletteController {
         ? (schema.emojiCatalog[context.channelId] ?? []).filter((e) => !isGlobalEmoji(e))
         : [];
     const globalEmojis = Object.values(schema.emojiCatalog).flat().filter(isGlobalEmoji);
+    const presetSections = splitPresetsForChannel(schema.presets, context.channelId);
     this.setState({
       context,
-      presets: presetsForChannel(schema.presets, context.channelId),
+      channelPresets: presetSections.channel,
+      globalPresets: presetSections.global,
       favorites: favoritesForChannel(schema.favoriteEmojis, context.channelId),
       availableEmojis: cached,
       globalEmojis,

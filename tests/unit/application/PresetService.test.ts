@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PresetService } from '../../../src/application/PresetService';
-import { presetsForChannel } from '../../../src/domain/preset';
+import { splitPresetsForChannel } from '../../../src/domain/preset';
 import { StorageRepository } from '../../../src/storage/StorageRepository';
 import { FakeStorageArea } from '../../helpers/fakeChrome';
 
@@ -96,16 +96,14 @@ describe('PresetService', () => {
     await service.move(c.value.id, 'up');
     await service.move(c.value.id, 'up');
     await service.move(c.value.id, 'up'); // boundary no-op
-    expect(presetsForChannel(await service.list(), undefined).map((p) => p.text)).toEqual([
-      'c',
-      'a',
-      'b',
-    ]);
     expect(
-      presetsForChannel(await new StorageRepository(area).load().then((s) => s.presets), CH_A).map(
-        (p) => p.text,
-      ),
-    ).toEqual(['c', 'ch', 'a', 'b']);
+      splitPresetsForChannel(await service.list(), undefined).global.map((p) => p.text),
+    ).toEqual(['c', 'a', 'b']);
+    const stored = await new StorageRepository(area).load().then((s) => s.presets);
+    const sections = splitPresetsForChannel(stored, CH_A);
+    expect(sections.global.map((p) => p.text)).toEqual(['c', 'a', 'b']);
+    // Moving a global preset never touches the channel group.
+    expect(sections.channel.map((p) => p.text)).toEqual(['ch']);
   });
 
   it('scopes channel presets and switches with the channel', async () => {
@@ -114,8 +112,15 @@ describe('PresetService', () => {
     await service.add({ text: 'for A', scope: 'channel', channelId: CH_A });
     await service.add({ text: 'for B', scope: 'channel', channelId: CH_B });
     const all = await service.list();
-    expect(presetsForChannel(all, CH_A).map((p) => p.text)).toEqual(['global', 'for A']);
-    expect(presetsForChannel(all, CH_B).map((p) => p.text)).toEqual(['global', 'for B']);
-    expect(presetsForChannel(all, undefined).map((p) => p.text)).toEqual(['global']);
+    const texts = (list: { text: string }[]) => list.map((p) => p.text);
+    const forA = splitPresetsForChannel(all, CH_A);
+    expect(texts(forA.channel)).toEqual(['for A']);
+    expect(texts(forA.global)).toEqual(['global']);
+    const forB = splitPresetsForChannel(all, CH_B);
+    expect(texts(forB.channel)).toEqual(['for B']);
+    expect(texts(forB.global)).toEqual(['global']);
+    const unknown = splitPresetsForChannel(all, undefined);
+    expect(unknown.channel).toEqual([]);
+    expect(texts(unknown.global)).toEqual(['global']);
   });
 });

@@ -189,6 +189,30 @@ button:disabled {
   border-color: var(--lcp-accent);
 }
 
+.lcp-preset-section {
+  margin: 0 0 6px;
+}
+
+.lcp-preset-section + .lcp-preset-section {
+  border-top: 1px solid var(--lcp-border);
+  padding-top: 6px;
+}
+
+.lcp-preset-section .lcp-section-title {
+  margin: 0 0 4px;
+}
+
+.lcp-section-subtitle {
+  display: block;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--lcp-fg-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lcp-preset-list {
   display: flex;
   flex-wrap: wrap;

@@ -3,8 +3,8 @@ import {
   isMessagePreset,
   movePreset,
   normalizeOrders,
-  presetsForChannel,
   sortPresets,
+  splitPresetsForChannel,
   validatePresetText,
   type MessagePreset,
 } from '../../../src/domain/preset';
@@ -62,25 +62,64 @@ describe('validatePresetText', () => {
   });
 });
 
-describe('presetsForChannel', () => {
+describe('splitPresetsForChannel', () => {
   const presets = [
     preset({ id: 'g2', order: 1 }),
     preset({ id: 'g1', order: 0 }),
+    preset({ id: 'a2', scope: 'channel', channelId: CH_A, order: 1 }),
     preset({ id: 'a1', scope: 'channel', channelId: CH_A, order: 0 }),
     preset({ id: 'b1', scope: 'channel', channelId: CH_B, order: 0 }),
   ];
-  it('returns globals plus matching channel presets, sorted', () => {
-    expect(presetsForChannel(presets, CH_A).map((p) => p.id)).toEqual(['g1', 'a1', 'g2']);
+  const ids = (list: MessagePreset[]): string[] => list.map((p) => p.id);
+
+  it('splits into sorted channel presets and sorted global presets', () => {
+    const result = splitPresetsForChannel(presets, CH_A);
+    expect(ids(result.channel)).toEqual(['a1', 'a2']);
+    expect(ids(result.global)).toEqual(['g1', 'g2']);
   });
-  it('returns only globals when the channel is unknown', () => {
-    expect(presetsForChannel(presets, undefined).map((p) => p.id)).toEqual(['g1', 'g2']);
+  it('orders each scope independently (order values are not compared across scopes)', () => {
+    const list = [
+      preset({ id: 'g-late', order: 5 }),
+      preset({ id: 'g-early', order: 2 }),
+      preset({ id: 'a-late', scope: 'channel', channelId: CH_A, order: 9 }),
+      preset({ id: 'a-early', scope: 'channel', channelId: CH_A, order: 1 }),
+    ];
+    const result = splitPresetsForChannel(list, CH_A);
+    expect(ids(result.channel)).toEqual(['a-early', 'a-late']);
+    expect(ids(result.global)).toEqual(['g-early', 'g-late']);
+  });
+  it('returns only channel presets when there are no globals', () => {
+    const result = splitPresetsForChannel(
+      presets.filter((p) => p.scope === 'channel'),
+      CH_A,
+    );
+    expect(ids(result.channel)).toEqual(['a1', 'a2']);
+    expect(result.global).toEqual([]);
+  });
+  it('returns only global presets when there are no channel presets', () => {
+    const result = splitPresetsForChannel(
+      presets.filter((p) => p.scope === 'global'),
+      CH_A,
+    );
+    expect(result.channel).toEqual([]);
+    expect(ids(result.global)).toEqual(['g1', 'g2']);
+  });
+  it('returns two empty lists when there are no presets at all', () => {
+    expect(splitPresetsForChannel([], CH_A)).toEqual({ channel: [], global: [] });
+  });
+  it('returns only globals when the channel is unknown (fail closed, no guessing)', () => {
+    const result = splitPresetsForChannel(presets, undefined);
+    expect(result.channel).toEqual([]);
+    expect(ids(result.global)).toEqual(['g1', 'g2']);
   });
   it('never leaks another channel preset', () => {
-    expect(presetsForChannel(presets, CH_B).map((p) => p.id)).not.toContain('a1');
+    const result = splitPresetsForChannel(presets, CH_B);
+    expect(ids(result.channel)).toEqual(['b1']);
+    expect(ids(result.global)).toEqual(['g1', 'g2']);
   });
   it('does not mutate the input', () => {
     const copy = structuredClone(presets);
-    presetsForChannel(presets, CH_A);
+    splitPresetsForChannel(presets, CH_A);
     expect(presets).toEqual(copy);
   });
 });
