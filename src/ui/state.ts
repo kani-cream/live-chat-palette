@@ -22,8 +22,10 @@ export interface PaletteState {
   context: VideoContext;
   chatInputAvailable: boolean;
   presetInstantSend: boolean;
-  /** Presets already filtered for the current channel. */
-  presets: readonly MessagePreset[];
+  /** Presets scoped to the current channel (sorted; empty when the channel is unknown). */
+  channelPresets: readonly MessagePreset[];
+  /** Presets shared across all channels (sorted independently of channelPresets). */
+  globalPresets: readonly MessagePreset[];
   /** Favorites already filtered for the current channel. */
   favorites: readonly EmojiReference[];
   /** Custom emojis discovered in the native picker (in-memory, per channel). */
@@ -60,7 +62,8 @@ export const createInitialState = (theme: Theme): PaletteState => ({
   context: {},
   chatInputAvailable: false,
   presetInstantSend: false,
-  presets: [],
+  channelPresets: [],
+  globalPresets: [],
   favorites: [],
   availableEmojis: [],
   globalEmojis: [],

@@ -325,6 +325,58 @@ test.describe('preset insertion and sending', () => {
     ]);
     const frame = await openWatchPage(page, VIDEO_A);
     const root = palette(frame);
-    await expect(root.locator('.lcp-preset-chip')).toHaveText(['global', 'for A']);
+    // "This channel" is rendered before "All channels"; channel B never leaks in.
+    await expect(root.locator('.lcp-preset-chip')).toHaveText(['for A', 'global']);
+    await expect(
+      root.locator('[data-testid="preset-section-channel"] .lcp-preset-chip'),
+    ).toHaveText(['for A']);
+    await expect(root.locator('[data-testid="preset-section-global"] .lcp-preset-chip')).toHaveText(
+      ['global'],
+    );
+  });
+
+  test('splits the Presets tab into "This channel" then "All channels" sections', async ({
+    page,
+    serviceWorker,
+  }) => {
+    await seedPresets(serviceWorker, [
+      { text: "Let's go!", scope: 'global' },
+      { text: 'Hello A', scope: 'channel', channelId: CH_A },
+      { text: 'So cute!', scope: 'global' },
+      { text: 'Bye A', scope: 'channel', channelId: CH_A },
+    ]);
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    const sections = root.locator('[data-testid^="preset-section-"]');
+    await expect(sections).toHaveCount(2);
+    await expect(sections.nth(0)).toHaveAttribute('data-testid', 'preset-section-channel');
+    await expect(sections.nth(1)).toHaveAttribute('data-testid', 'preset-section-global');
+    await expect(root.getByRole('group', { name: /This channel/ })).toBeVisible();
+    await expect(root.getByRole('group', { name: 'All channels' })).toBeVisible();
+    // Each scope keeps its own order; the mixed seed order is never interleaved in the UI.
+    await expect(root.locator('.lcp-preset-chip')).toHaveText([
+      'Hello A',
+      'Bye A',
+      "Let's go!",
+      'So cute!',
+    ]);
+  });
+
+  test('omits an empty section heading (global presets only)', async ({ page, serviceWorker }) => {
+    await seedPresets(serviceWorker, [{ text: 'Nice!', scope: 'global' }]);
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    await expect(root.locator('[data-testid="preset-section-global"]')).toBeVisible();
+    await expect(root.locator('[data-testid="preset-section-channel"]')).toHaveCount(0);
+    await expect(root.getByText('This channel')).toHaveCount(0);
+  });
+
+  test('omits an empty section heading (channel presets only)', async ({ page, serviceWorker }) => {
+    await seedPresets(serviceWorker, [{ text: 'Only here', scope: 'channel', channelId: CH_A }]);
+    const frame = await openWatchPage(page, VIDEO_A);
+    const root = palette(frame);
+    await expect(root.locator('[data-testid="preset-section-channel"]')).toBeVisible();
+    await expect(root.locator('[data-testid="preset-section-global"]')).toHaveCount(0);
+    await expect(root.getByText('All channels')).toHaveCount(0);
   });
 });

@@ -1,4 +1,4 @@
-import type { PresetScope } from '../domain/preset';
+import type { MessagePreset, PresetScope } from '../domain/preset';
 import { MAX_PRESET_LENGTH } from '../domain/preset';
 import { emojiIdentityKey } from '../domain/emoji';
 import { h } from './dom';
@@ -174,13 +174,92 @@ const renderEmojiInserter = (
   return container;
 };
 
+const renderPresetChip = (
+  preset: MessagePreset,
+  state: PaletteState,
+  handlers: PaletteHandlers,
+): HTMLElement =>
+  h(
+    'li',
+    {},
+    h(
+      'button',
+      {
+        className: 'lcp-preset-chip',
+        attrs: {
+          type: 'button',
+          'aria-label': STRINGS.insertPreset(preset.text),
+          title: preset.text,
+        },
+        dataset: {
+          scope: preset.scope,
+          presetId: preset.id,
+          focusKey: `preset:${preset.id}`,
+        },
+        props: { disabled: !state.chatInputAvailable || state.busy },
+        on: {
+          // Keep focus/caret inside YouTube's input; the click still fires.
+          mousedown: (event) => {
+            event.preventDefault();
+          },
+          click: (event) => {
+            handlers.onPresetClick(preset, {
+              metaKey: event.metaKey,
+              ctrlKey: event.ctrlKey,
+            });
+          },
+        },
+      },
+      // Render known member-emoji shortcodes as images so the chip is identifiable.
+      ...renderEmojiText(preset.text, renderableEmojis(state)),
+    ),
+  );
+
+/**
+ * One scope section ("This channel" / "All channels"). Returns null when the section has no
+ * presets so a heading is never rendered without content beneath it.
+ */
+const renderPresetSection = (
+  scope: PresetScope,
+  presets: readonly MessagePreset[],
+  state: PaletteState,
+  handlers: PaletteHandlers,
+): HTMLElement | null => {
+  if (presets.length === 0) return null;
+  const titleId = `lcp-preset-section-${scope}-title`;
+  const title = scope === 'channel' ? STRINGS.presetSectionChannel : STRINGS.presetSectionGlobal;
+  // The channel name is secondary text only; it comes from the already-resolved context and
+  // introduces no new DOM dependency.
+  const subtitle = scope === 'channel' ? state.context.channelName : undefined;
+  return h(
+    'section',
+    {
+      className: 'lcp-preset-section',
+      attrs: { role: 'group', 'aria-labelledby': titleId },
+      dataset: { testid: `preset-section-${scope}`, scope },
+    },
+    h(
+      'h3',
+      { className: 'lcp-section-title', attrs: { id: titleId } },
+      title,
+      subtitle ? h('span', { className: 'lcp-section-subtitle', text: subtitle }) : null,
+    ),
+    h(
+      'ul',
+      { className: 'lcp-preset-list' },
+      ...presets.map((preset) => renderPresetChip(preset, state, handlers)),
+    ),
+  );
+};
+
 export const renderPresetPanel = (state: PaletteState, handlers: PaletteHandlers): HTMLElement => {
   const container = h('div', {
     attrs: { role: 'tabpanel', id: 'lcp-panel-preset', 'aria-labelledby': 'lcp-tab-preset' },
     dataset: { testid: 'preset-panel' },
   });
+  const hasPresets = state.channelPresets.length > 0 || state.globalPresets.length > 0;
 
-  if (state.presets.length === 0 && !state.presetFormOpen) {
+  if (!hasPresets && !state.presetFormOpen) {
     container.append(
       renderEmptyState({
         title: STRINGS.presetEmptyTitle,
@@ -195,53 +274,17 @@ export const renderPresetPanel = (state: PaletteState, handlers: PaletteHandlers
     return container;
   }
 
-  if (state.presets.length > 0) {
+  if (hasPresets) {
     container.append(
       h('p', {
         className: 'lcp-hint',
         text: state.presetInstantSend ? STRINGS.presetHintInstant : STRINGS.presetHint,
       }),
-      h(
-        'ul',
-        { className: 'lcp-preset-list' },
-        ...state.presets.map((preset) =>
-          h(
-            'li',
-            {},
-            h(
-              'button',
-              {
-                className: 'lcp-preset-chip',
-                attrs: {
-                  type: 'button',
-                  'aria-label': STRINGS.insertPreset(preset.text),
-                  title: preset.text,
-                },
-                dataset: {
-                  scope: preset.scope,
-                  presetId: preset.id,
-                  focusKey: `preset:${preset.id}`,
-                },
-                props: { disabled: !state.chatInputAvailable || state.busy },
-                on: {
-                  // Keep focus/caret inside YouTube's input; the click still fires.
-                  mousedown: (event) => {
-                    event.preventDefault();
-                  },
-                  click: (event) => {
-                    handlers.onPresetClick(preset, {
-                      metaKey: event.metaKey,
-                      ctrlKey: event.ctrlKey,
-                    });
-                  },
-                },
-              },
-              // Render known member-emoji shortcodes as images so the chip is identifiable.
-              ...renderEmojiText(preset.text, renderableEmojis(state)),
-            ),
-          ),
-        ),
-      ),
+      // Always "This channel" first, then "All channels"; empty sections are omitted.
+      ...[
+        renderPresetSection('channel', state.channelPresets, state, handlers),
+        renderPresetSection('global', state.globalPresets, state, handlers),
+      ].filter((section): section is HTMLElement => section !== null),
     );
   }
 

@@ -114,6 +114,11 @@ const setup = async (options: SetupOptions = {}) => {
   };
 };
 
+const chipsIn = (t: Awaited<ReturnType<typeof setup>>, section: 'channel' | 'global'): string[] =>
+  t
+    .qa(`[data-testid="preset-section-${section}"] .lcp-preset-chip`)
+    .map((b) => b.textContent ?? '');
+
 const addPresetViaForm = async (
   t: Awaited<ReturnType<typeof setup>>,
   text: string,
@@ -446,6 +451,8 @@ describe('PaletteController – presets', () => {
     const t = await setup({ area, context: { videoId: VIDEO_A } });
     t.click(t.q('[data-testid="tab-preset"]'));
     expect(t.qa('.lcp-preset-chip').map((b) => b.textContent)).toEqual(['global']);
+    expect(t.q('[data-testid="preset-section-channel"]')).toBeNull();
+    expect(t.q('[data-testid="preset-section-global"]')).not.toBeNull();
     t.click(t.q('[data-focus-key="preset-add"]'));
     const channelOption = t.q<HTMLOptionElement>(
       '[data-testid="preset-form-scope"] option[value="channel"]',
@@ -461,10 +468,64 @@ describe('PaletteController – presets', () => {
     await seed.add({ text: 'for B', scope: 'channel', channelId: CH_B });
     const t = await setup({ area });
     t.click(t.q('[data-testid="tab-preset"]'));
-    expect(t.qa('.lcp-preset-chip').map((b) => b.textContent)).toEqual(['global', 'for A']);
+    // "This channel" renders before "All channels".
+    expect(t.qa('.lcp-preset-chip').map((b) => b.textContent)).toEqual(['for A', 'global']);
+    expect(chipsIn(t, 'channel')).toEqual(['for A']);
+    expect(chipsIn(t, 'global')).toEqual(['global']);
     t.broadcast({ videoId: VIDEO_B, channelId: CH_B });
     await t.settle();
-    expect(t.qa('.lcp-preset-chip').map((b) => b.textContent)).toEqual(['global', 'for B']);
+    // Channel A presets disappear, channel B presets appear, globals remain.
+    expect(chipsIn(t, 'channel')).toEqual(['for B']);
+    expect(chipsIn(t, 'global')).toEqual(['global']);
+    expect(t.qa('.lcp-preset-chip').map((b) => b.textContent)).not.toContain('for A');
+    // Still exactly one palette panel: navigation re-renders, it never re-mounts.
+    expect(t.qa('[data-testid="lcp-panel"]')).toHaveLength(1);
+    t.controller.dispose();
+  });
+  it('hides the "This channel" section on a channel without channel presets', async () => {
+    const area = new FakeStorageArea();
+    const seed = new PresetService(new StorageRepository(area));
+    await seed.add({ text: 'global', scope: 'global' });
+    await seed.add({ text: 'for A', scope: 'channel', channelId: CH_A });
+    const t = await setup({ area });
+    t.click(t.q('[data-testid="tab-preset"]'));
+    expect(t.q('[data-testid="preset-section-channel"]')).not.toBeNull();
+    t.broadcast({ videoId: VIDEO_B, channelId: CH_B });
+    await t.settle();
+    expect(t.q('[data-testid="preset-section-channel"]')).toBeNull();
+    expect(chipsIn(t, 'global')).toEqual(['global']);
+    t.controller.dispose();
+  });
+  it('shows the channel name under "This channel" when the context provides it', async () => {
+    const area = new FakeStorageArea();
+    await new PresetService(new StorageRepository(area)).add({
+      text: 'for A',
+      scope: 'channel',
+      channelId: CH_A,
+    });
+    const t = await setup({
+      area,
+      context: { videoId: VIDEO_A, channelId: CH_A, channelName: 'Channel A' },
+    });
+    t.click(t.q('[data-testid="tab-preset"]'));
+    expect(t.q('[data-testid="preset-section-channel"] .lcp-section-subtitle')?.textContent).toBe(
+      'Channel A',
+    );
+    t.controller.dispose();
+  });
+  it('orders each section independently even when order values overlap', async () => {
+    const area = new FakeStorageArea();
+    const seed = new PresetService(new StorageRepository(area));
+    // Interleave scopes on insert so a naive mixed sort would interleave them in the UI too.
+    await seed.add({ text: 'g1', scope: 'global' });
+    await seed.add({ text: 'a1', scope: 'channel', channelId: CH_A });
+    await seed.add({ text: 'g2', scope: 'global' });
+    await seed.add({ text: 'a2', scope: 'channel', channelId: CH_A });
+    const t = await setup({ area });
+    t.click(t.q('[data-testid="tab-preset"]'));
+    expect(chipsIn(t, 'channel')).toEqual(['a1', 'a2']);
+    expect(chipsIn(t, 'global')).toEqual(['g1', 'g2']);
+    expect(t.qa('.lcp-preset-chip').map((b) => b.textContent)).toEqual(['a1', 'a2', 'g1', 'g2']);
     t.controller.dispose();
   });
   it('reflects preset changes made elsewhere (options page) live', async () => {
